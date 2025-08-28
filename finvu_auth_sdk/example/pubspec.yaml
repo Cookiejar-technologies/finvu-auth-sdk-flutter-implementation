@@ -16,6 +16,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  webview_flutter: ^4.13.0
 
   finvu_auth_sdk:
     # When depending on this package from a real application you should use:
