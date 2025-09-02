@@ -1,8 +1,12 @@
+library;
 
-import 'finvu_auth_sdk_platform_interface.dart';
+// Public models
+export 'src/models.dart';
 
-class FinvuAuthSdk {
-  Future<String?> getPlatformVersion() {
-    return FinvuAuthSdkPlatform.instance.getPlatformVersion();
-  }
-}
+// Public interfaces
+export 'src/api/finvu_host.dart';
+export 'src/api/finvu_webview_wrapper.dart';
+export 'src/api/finvu_native_wrapper.dart';
+
+// Factory to obtain default implementations
+export 'src/factory.dart';
