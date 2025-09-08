@@ -1,6 +1,6 @@
 name: finvu_auth_sdk_flutter
 description: "A new auth sdk from finvu AA to complete authentication process without entering the otp."
-version: 0.1.1
+version: 1.0.0
 homepage: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 repository: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 issue_tracker: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation/issues

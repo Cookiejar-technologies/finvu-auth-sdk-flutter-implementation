@@ -1,10 +1,6 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:finvu_auth_sdk_example/src/pages/native_view_page.dart';
 import 'package:finvu_auth_sdk_example/src/pages/webview_page.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   runApp(const FinvuDemoApp());

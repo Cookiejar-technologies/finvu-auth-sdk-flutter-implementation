@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'package:finvu_auth_sdk_flutter/finvu_auth_sdk.dart';
 import 'package:flutter/material.dart';
-import 'package:finvu_auth_sdk/finvu_auth_sdk.dart';
 
 class NativeViewPage extends StatefulWidget {
   const NativeViewPage({super.key});
@@ -10,30 +10,31 @@ class NativeViewPage extends StatefulWidget {
 }
 
 class _NativeViewPageState extends State<NativeViewPage> {
-  // Public factory gives you the interface-based wrapper (no generated imports)
+  // Constants you can edit at compile time
+  static const String APP_ID = '';
+  static const String REQUEST_ID = '';
+
   late final IFinvuNativeWrapper _native = FinvuAuthSdk.nativeWrapper();
 
-  final _appIdCtrl = TextEditingController(text: '');
-  final _reqIdCtrl = TextEditingController(text: '');
   final _phoneCtrl = TextEditingController();
 
   bool _initDone = false;
   String? _busy; // 'init' | 'start' | null
   Map<String, Object?>? _lastResponse;
 
+  void _onPhoneChanged() => setState(() {});
+
   @override
   void initState() {
     super.initState();
-    // Set environment once, like RN useEffect
     _native.setEnvironment(Environment.development);
+    _phoneCtrl.addListener(_onPhoneChanged);
   }
 
   @override
   void dispose() {
-    _appIdCtrl.dispose();
-    _reqIdCtrl.dispose();
+    _phoneCtrl.removeListener(_onPhoneChanged);
     _phoneCtrl.dispose();
-    // Optional cleanup when leaving screen
     _native.cleanupAll();
     super.dispose();
   }
@@ -46,10 +47,7 @@ class _NativeViewPageState extends State<NativeViewPage> {
 
     try {
       final res = await _native.initAuth(
-        InitConfig(
-          appId: _appIdCtrl.text.trim(),
-          requestId: _reqIdCtrl.text.trim(),
-        ),
+        InitConfig(appId: APP_ID, requestId: REQUEST_ID),
       );
 
       setState(() {
@@ -144,32 +142,7 @@ class _NativeViewPageState extends State<NativeViewPage> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Init inputs
-            const Text(
-              'Init Config',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _appIdCtrl,
-              decoration: InputDecoration(
-                labelText: 'App ID',
-                hintText: 'Enter App ID',
-                border: border,
-                enabled: !_initDone && !isInitBusy,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _reqIdCtrl,
-              decoration: InputDecoration(
-                labelText: 'Request ID',
-                hintText: 'Enter Request ID',
-                border: border,
-                enabled: !_initDone && !isInitBusy,
-              ),
-            ),
-            const SizedBox(height: 12),
+            // Init button only
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
