@@ -1,0 +1,13 @@
+example/
+.github/
+build/
+.android/
+.ios/
+ios/.symlinks/
+android/.gradle/
+test_driver/
+coverage/
+**/*.iml
+**/.DS_Store
+test/finvu_auth_sdk_method_channel_test.dart
+test/finvu_auth_sdk_test.dart
