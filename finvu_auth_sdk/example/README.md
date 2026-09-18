@@ -1,6 +1,6 @@
 # finvu_auth_sdk_example
 
-Demonstrates how to use the finvu_auth_sdk plugin.
+Demonstrates how to use the finvu_authentication_sdk plugin.
 
 ## Getting Started
 

@@ -33,39 +33,73 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
         final method = (payload['method'] as String?) ?? '';
         final callback = (payload['callback'] as String?) ?? '';
 
-        Future<Map<String, Object?>> call() async {
+        // Every branch below hands back exactly what the native Android/iOS
+        // SDK returned via _host — no field allow-list, no reshaping. This
+        // matches the native and React Native bridges: the web page gets the
+        // same JSON the native SDK produced.
+        Future<Map<String, dynamic>> call() async {
           switch (method) {
+            // Both the original and the factor-explicit names reach the same
+            // host call, so a page can move to initSNA/startSNA at its own pace.
             case 'initAuth':
+            case 'initSNA':
               {
                 final initConfig = payload['initConfig'];
                 final m = initConfig is String
                     ? jsonDecode(initConfig)
                     : (initConfig ?? {});
-                final res = await _host.initAuth(
+                return _host.initSNA(
                   InitConfig(
-                    appId: '${m['appId'] ?? ''}',
                     requestId: '${m['requestId'] ?? ''}',
+                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
                   ),
                 );
-                return _outgoing(res);
               }
             case 'startAuth':
+            case 'startSNA':
+              return _host.startSNA('${payload['snaLink'] ?? ''}');
+            case 'getDeviceBindingState':
               {
-                final res = await _host.startAuth(
-                  '${payload['phoneNumber'] ?? ''}',
-                );
-                return _outgoing(res);
-              }
-            case 'verifyOtp':
-              {
-                final res = await _host.verifyOtp(
-                  VerifyOtpReq(
-                    phoneNumber: '${payload['phoneNumber'] ?? ''}',
-                    otp: (payload['otp'] as String?)?.trim(),
+                final m = _config(payload);
+                return _host.getDeviceBindingState(
+                  DeviceBindingConfig(
+                    userId: '${m['userId'] ?? ''}',
+                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
                   ),
                 );
-                return _outgoing(res);
               }
+            case 'enrollDeviceBinding':
+              {
+                final m = _config(payload);
+                return _host.enrollDeviceBinding(
+                  DeviceBindingEnrollConfig(
+                    userId: '${m['userId'] ?? ''}',
+                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
+                    attestationChallenge: m['attestationChallenge'] == null
+                        ? null
+                        : '${m['attestationChallenge']}',
+                  ),
+                );
+              }
+            case 'signDeviceBindingChallenge':
+              {
+                final m = _config(payload);
+                return _host.signDeviceBindingChallenge(
+                  DeviceBindingSignConfig(
+                    userId: '${m['userId'] ?? ''}',
+                    challenge: '${m['challenge'] ?? ''}',
+                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
+                    promptTitle: m['promptTitle'] == null
+                        ? null
+                        : '${m['promptTitle']}',
+                    promptSubtitle: m['promptSubtitle'] == null
+                        ? null
+                        : '${m['promptSubtitle']}',
+                  ),
+                );
+              }
+            case 'getCapabilities':
+              return _host.getCapabilities();
             default:
               return {
                 'error': {
@@ -80,10 +114,10 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
         final map = await call();
         if (callback.isEmpty) return;
 
-        final resultJsonString = jsonEncode(map); // '{"status":"SUCCESS", ...}'
+        final resultJsonString = jsonEncode(map); // '{"status":"...", ...}'
         final quotedForJs = jsonEncode(
           resultJsonString,
-        ); // '"{\"status\":\"SUCCESS\",...}"'
+        ); // '"{\"status\":\"...\",...}"'
 
         final js =
             '''
@@ -103,24 +137,19 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
   @override
   Future<void> cleanupAll() => _host.cleanupAll();
 
-  Map<String, Object?> _outgoing(FinvuAuthResult r) {
-    if (r.status == FinvuStatus.success) {
-      return {
-        'status': 'SUCCESS',
-        if (r.data?.token != null) 'token': r.data!.token,
-        if (r.data?.authType != null) 'authType': r.data!.authType,
-        ...r.data?.extra ?? const {},
-      };
-    } else {
-      return {
-        'error': {
-          'status': 'FAILURE',
-          if (r.error?.errorCode != null) 'errorCode': r.error!.errorCode,
-          if (r.error?.errorMessage != null)
-            'errorMessage': r.error!.errorMessage,
-          ...r.error?.details ?? const {},
-        },
-      };
+  /// Device binding arguments arrive under a single `config` key, which the page
+  /// may send either as a nested object or as a JSON string. Both are accepted so
+  /// the same web bundle works against every platform's bridge.
+  Map<String, dynamic> _config(Map<String, dynamic> payload) {
+    final raw = payload['config'];
+    if (raw is String) {
+      try {
+        return Map<String, dynamic>.from(jsonDecode(raw));
+      } catch (_) {
+        return const {};
+      }
     }
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return const {};
   }
 }

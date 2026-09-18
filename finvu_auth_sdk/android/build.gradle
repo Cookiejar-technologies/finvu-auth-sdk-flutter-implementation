@@ -14,7 +14,7 @@ buildscript {
     }
 }
 
-allprojects {
+rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
@@ -44,13 +44,7 @@ android {
     }
 
     defaultConfig {
-        minSdk = 21
-    }
-
-    dependencies {
-        implementation("com.finvu.android:finvuauthenticationsdk:1.0.3")
-        testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
+        minSdk = 25
     }
 
     testOptions {
@@ -64,4 +58,13 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    // Finvu Android Auth SDK — resolved from Maven Central (mavenCentral() above).
+    // No GitHub Packages credentials required. Pinned to 1.0.3 deliberately —
+    // this no longer tracks the React Native wrapper's version.
+    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.0.3")
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation("org.mockito:mockito-core:5.0.0")
 }

@@ -14,61 +14,47 @@ PlatformException _createConnectionError(String channelName) {
     message: 'Unable to establish connection on channel: "$channelName".',
   );
 }
+
 bool _deepEquals(Object? a, Object? b) {
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-        .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
-    return a.length == b.length && a.entries.every((MapEntry<Object?, Object?> entry) =>
-        (b as Map<Object?, Object?>).containsKey(entry.key) &&
-        _deepEquals(entry.value, b[entry.key]));
+    return a.length == b.length &&
+        a.entries.every(
+          (MapEntry<Object?, Object?> entry) =>
+              (b as Map<Object?, Object?>).containsKey(entry.key) &&
+              _deepEquals(entry.value, b[entry.key]),
+        );
   }
   return a == b;
 }
 
-
-enum Environment {
-  production,
-  development,
-}
-
-enum ErrorCode {
-  invalidRequest,
-  genericError,
-}
-
-enum FinvuStatus {
-  success,
-  failure,
-}
+enum Environment { production, development }
 
 class InitConfig {
-  InitConfig({
-    this.appId,
-    this.requestId,
-  });
-
-  String? appId;
+  InitConfig({this.requestId, this.entityId});
 
   String? requestId;
 
+  String? entityId;
+
   List<Object?> _toList() {
-    return <Object?>[
-      appId,
-      requestId,
-    ];
+    return <Object?>[requestId, entityId];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static InitConfig decode(Object result) {
     result as List<Object?>;
     return InitConfig(
-      appId: result[0] as String?,
-      requestId: result[1] as String?,
+      requestId: result[0] as String?,
+      entityId: result[1] as String?,
     );
   }
 
@@ -86,47 +72,69 @@ class InitConfig {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
-class FinvuAuthSuccessResponse {
-  FinvuAuthSuccessResponse({
-    this.token,
-    this.authType,
-    this.extra,
+/// Arguments for every device binding call. Device binding keys are scoped per
+/// user, so [userId] is always required; the other fields are per-operation.
+class DeviceBindingConfig {
+  DeviceBindingConfig({
+    this.userId,
+    this.entityId,
+    this.challenge,
+    this.attestationChallenge,
+    this.promptTitle,
+    this.promptSubtitle,
   });
 
-  String? token;
+  /// Required. Keys are scoped to this user.
+  String? userId;
 
-  String? authType;
+  /// Optional; falls back to the entityId given to initSNA.
+  String? entityId;
 
-  Map<String, Object?>? extra;
+  /// Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes.
+  String? challenge;
+
+  /// Optional server nonce for enrollDeviceBinding. Android returns an attestation
+  /// chain when supplied; iOS has no equivalent API and ignores it.
+  String? attestationChallenge;
+
+  String? promptTitle;
+
+  String? promptSubtitle;
 
   List<Object?> _toList() {
     return <Object?>[
-      token,
-      authType,
-      extra,
+      userId,
+      entityId,
+      challenge,
+      attestationChallenge,
+      promptTitle,
+      promptSubtitle,
     ];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
-  static FinvuAuthSuccessResponse decode(Object result) {
+  static DeviceBindingConfig decode(Object result) {
     result as List<Object?>;
-    return FinvuAuthSuccessResponse(
-      token: result[0] as String?,
-      authType: result[1] as String?,
-      extra: (result[2] as Map<Object?, Object?>?)?.cast<String, Object?>(),
+    return DeviceBindingConfig(
+      userId: result[0] as String?,
+      entityId: result[1] as String?,
+      challenge: result[2] as String?,
+      attestationChallenge: result[3] as String?,
+      promptTitle: result[4] as String?,
+      promptSubtitle: result[5] as String?,
     );
   }
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
-    if (other is! FinvuAuthSuccessResponse || other.runtimeType != runtimeType) {
+    if (other is! DeviceBindingConfig || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -137,161 +145,8 @@ class FinvuAuthSuccessResponse {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
-
-class FinvuAuthFailureError {
-  FinvuAuthFailureError({
-    this.errorCode,
-    this.errorMessage,
-    this.details,
-  });
-
-  String? errorCode;
-
-  String? errorMessage;
-
-  Map<String, Object?>? details;
-
-  List<Object?> _toList() {
-    return <Object?>[
-      errorCode,
-      errorMessage,
-      details,
-    ];
-  }
-
-  Object encode() {
-    return _toList();  }
-
-  static FinvuAuthFailureError decode(Object result) {
-    result as List<Object?>;
-    return FinvuAuthFailureError(
-      errorCode: result[0] as String?,
-      errorMessage: result[1] as String?,
-      details: (result[2] as Map<Object?, Object?>?)?.cast<String, Object?>(),
-    );
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  bool operator ==(Object other) {
-    if (other is! FinvuAuthFailureError || other.runtimeType != runtimeType) {
-      return false;
-    }
-    if (identical(this, other)) {
-      return true;
-    }
-    return _deepEquals(encode(), other.encode());
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
-}
-
-class FinvuAuthResult {
-  FinvuAuthResult({
-    this.status,
-    this.data,
-    this.error,
-  });
-
-  /// Discriminator: SUCCESS or FAILURE
-  FinvuStatus? status;
-
-  /// Present when status == SUCCESS
-  FinvuAuthSuccessResponse? data;
-
-  /// Present when status == FAILURE
-  FinvuAuthFailureError? error;
-
-  List<Object?> _toList() {
-    return <Object?>[
-      status,
-      data,
-      error,
-    ];
-  }
-
-  Object encode() {
-    return _toList();  }
-
-  static FinvuAuthResult decode(Object result) {
-    result as List<Object?>;
-    return FinvuAuthResult(
-      status: result[0] as FinvuStatus?,
-      data: result[1] as FinvuAuthSuccessResponse?,
-      error: result[2] as FinvuAuthFailureError?,
-    );
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  bool operator ==(Object other) {
-    if (other is! FinvuAuthResult || other.runtimeType != runtimeType) {
-      return false;
-    }
-    if (identical(this, other)) {
-      return true;
-    }
-    return _deepEquals(encode(), other.encode());
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
-}
-
-class VerifyOtpReq {
-  VerifyOtpReq({
-    this.phoneNumber,
-    this.otp,
-  });
-
-  String? phoneNumber;
-
-  String? otp;
-
-  List<Object?> _toList() {
-    return <Object?>[
-      phoneNumber,
-      otp,
-    ];
-  }
-
-  Object encode() {
-    return _toList();  }
-
-  static VerifyOtpReq decode(Object result) {
-    result as List<Object?>;
-    return VerifyOtpReq(
-      phoneNumber: result[0] as String?,
-      otp: result[1] as String?,
-    );
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  bool operator ==(Object other) {
-    if (other is! VerifyOtpReq || other.runtimeType != runtimeType) {
-      return false;
-    }
-    if (identical(this, other)) {
-      return true;
-    }
-    return _deepEquals(encode(), other.encode());
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
-}
-
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -300,29 +155,14 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is Environment) {
+    } else if (value is Environment) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is ErrorCode) {
+    } else if (value is InitConfig) {
       buffer.putUint8(130);
-      writeValue(buffer, value.index);
-    }    else if (value is FinvuStatus) {
+      writeValue(buffer, value.encode());
+    } else if (value is DeviceBindingConfig) {
       buffer.putUint8(131);
-      writeValue(buffer, value.index);
-    }    else if (value is InitConfig) {
-      buffer.putUint8(132);
-      writeValue(buffer, value.encode());
-    }    else if (value is FinvuAuthSuccessResponse) {
-      buffer.putUint8(133);
-      writeValue(buffer, value.encode());
-    }    else if (value is FinvuAuthFailureError) {
-      buffer.putUint8(134);
-      writeValue(buffer, value.encode());
-    }    else if (value is FinvuAuthResult) {
-      buffer.putUint8(135);
-      writeValue(buffer, value.encode());
-    }    else if (value is VerifyOtpReq) {
-      buffer.putUint8(136);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -332,38 +172,48 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129: 
+      case 129:
         final int? value = readValue(buffer) as int?;
         return value == null ? null : Environment.values[value];
-      case 130: 
-        final int? value = readValue(buffer) as int?;
-        return value == null ? null : ErrorCode.values[value];
-      case 131: 
-        final int? value = readValue(buffer) as int?;
-        return value == null ? null : FinvuStatus.values[value];
-      case 132: 
+      case 130:
         return InitConfig.decode(readValue(buffer)!);
-      case 133: 
-        return FinvuAuthSuccessResponse.decode(readValue(buffer)!);
-      case 134: 
-        return FinvuAuthFailureError.decode(readValue(buffer)!);
-      case 135: 
-        return FinvuAuthResult.decode(readValue(buffer)!);
-      case 136: 
-        return VerifyOtpReq.decode(readValue(buffer)!);
+      case 131:
+        return DeviceBindingConfig.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
   }
 }
 
+/// Every call below hands back exactly the JSON the native Android/iOS SDK
+/// produced, as a raw string — deliberately untyped. This mirrors the React
+/// Native bridge (`FinvuAuthSdkRnModule`), which does `result.toString()` /
+/// `JSONSerialization` passthrough rather than mapping onto a fixed schema.
+/// Do NOT reintroduce a typed success/failure model here: previous versions
+/// of this schema declared fields (statusCode, authType, token, requestId,
+/// userId, timestamp) that neither native SDK has ever actually returned,
+/// while real fields (mcc, mnc, httpStatusCode) got silently dropped into a
+/// catch-all map — inconsistently between Android and iOS. Returning the raw
+/// string sidesteps that class of bug entirely: whatever native sends is
+/// exactly what the Dart caller gets, decoded but not filtered.
+///
+/// The one shape this bridge imposes is on failure: native calls throw an
+/// exception rather than returning JSON, so something has to serialize it.
+/// Both platform plugins wrap that into the same small
+/// `{"error": {"status", "errorCode", "errorMessage"}}` envelope the RN
+/// module uses, so failures look identical across RN, Android-native, and
+/// iOS-native callers.
 class FinvuHostApi {
   /// Constructor for [FinvuHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  FinvuHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  FinvuHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -371,13 +221,17 @@ class FinvuHostApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<void> setUp(Environment env) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.finvu_auth_sdk.FinvuHostApi.setUp$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.setUp$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[env],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[env]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -393,14 +247,18 @@ class FinvuHostApi {
     }
   }
 
-  Future<FinvuAuthResult> initAuth(InitConfig config) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.finvu_auth_sdk.FinvuHostApi.initAuth$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+  Future<String> initSNA(InitConfig config) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.initSNA$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -417,18 +275,22 @@ class FinvuHostApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as FinvuAuthResult?)!;
+      return (pigeonVar_replyList[0] as String?)!;
     }
   }
 
-  Future<FinvuAuthResult> startAuth(String phoneNumber) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.finvu_auth_sdk.FinvuHostApi.startAuth$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+  Future<String> startSNA(String snaLink) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.startSNA$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[snaLink],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[phoneNumber]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -445,18 +307,22 @@ class FinvuHostApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as FinvuAuthResult?)!;
+      return (pigeonVar_replyList[0] as String?)!;
     }
   }
 
-  Future<FinvuAuthResult> verifyOtp(VerifyOtpReq request) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.finvu_auth_sdk.FinvuHostApi.verifyOtp$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+  Future<String> getDeviceBindingState(DeviceBindingConfig config) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getDeviceBindingState$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -473,17 +339,114 @@ class FinvuHostApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as FinvuAuthResult?)!;
+      return (pigeonVar_replyList[0] as String?)!;
+    }
+  }
+
+  Future<String> enrollDeviceBinding(DeviceBindingConfig config) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.enrollDeviceBinding$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as String?)!;
+    }
+  }
+
+  Future<String> signDeviceBindingChallenge(DeviceBindingConfig config) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.signDeviceBindingChallenge$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as String?)!;
+    }
+  }
+
+  /// Raw JSON from the native SDK's own capabilities dictionary.
+  Future<String> getCapabilities() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getCapabilities$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as String?)!;
     }
   }
 
   Future<void> cleanupAll() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.finvu_auth_sdk.FinvuHostApi.cleanupAll$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.cleanupAll$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:finvu_auth_sdk_flutter/finvu_auth_sdk.dart';
+import 'package:finvu_authentication_sdk/finvu_authentication_sdk.dart';
 
 class WebViewPage extends StatefulWidget {
   const WebViewPage({super.key});
@@ -9,42 +9,81 @@ class WebViewPage extends StatefulWidget {
 }
 
 class _WebViewPageState extends State<WebViewPage> {
-  late final WebViewController _controller;
-  late final IFinvuWebViewWrapper _wrapper;
-  bool _ready = false;
-  static const _webUrl = 'https://test-web-app-8a50c.web.app/?v=debug-1';
+  final _urlController = TextEditingController();
+  WebViewController? _controller;
+  IFinvuWebViewWrapper? _wrapper;
+  bool _loaded = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
-    _wrapper = FinvuAuthSdk.webViewBridge();
-    _init();
-  }
+  Future<void> _loadWebView() async {
+    final url = _urlController.text.trim();
+    if (url.isEmpty) return;
 
-  Future<void> _init() async {
-    await _wrapper.setupWebView(
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: (error) {
+            debugPrint('WebView error: ${error.description}');
+          },
+        ),
+      );
+
+    final wrapper = FinvuAuthSdk.webViewBridge();
+    await wrapper.setupWebView(
       env: Environment.development,
-      controller: _controller,
+      controller: controller,
     );
-    await _controller.loadRequest(Uri.parse(_webUrl));
-    setState(() => _ready = true);
+    await controller.loadRequest(Uri.parse(url));
+
+    setState(() {
+      _controller = controller;
+      _wrapper = wrapper;
+      _loaded = true;
+    });
   }
 
   @override
   void dispose() {
-    _wrapper.cleanupAll();
+    _urlController.dispose();
+    _wrapper?.cleanupAll();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loaded && _controller != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('WebView Flow')),
+        body: WebViewWidget(controller: _controller!),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('WebView Flow')),
-      body: _ready
-          ? WebViewWidget(controller: _controller)
-          : const Center(child: CircularProgressIndicator()),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('WebView URL', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _urlController,
+              decoration: const InputDecoration(
+                hintText: 'https://...',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadWebView,
+              child: const Text('Load WebView'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

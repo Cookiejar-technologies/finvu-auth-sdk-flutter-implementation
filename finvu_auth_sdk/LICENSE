@@ -1,14 +1,38 @@
-Finvu Account Aggregator Authentication SDK
-Copyright (c) 2025 Cookiejar Technologies Pvt. Ltd., India
+Copyright (c) 2025 Cookiejar Technologies Private Limited. All rights reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this SDK except in compliance with the License.
-You may obtain a copy of the License at
+PROPRIETARY SOFTWARE LICENSE
 
-    http://www.apache.org/licenses/LICENSE-2.0
+This software and associated documentation files (the "Software") are the
+proprietary and confidential property of Cookiejar Technologies Private Limited
+("Cookiejar Technologies").
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+The Software is licensed, not sold. By installing, copying, or otherwise using
+the Software, you agree to be bound by the terms of the commercial agreement
+between you and Cookiejar Technologies. If you do not have such an agreement,
+you are not authorized to use this Software.
+
+RESTRICTIONS
+
+You may not:
+  - Copy, modify, adapt, translate, or create derivative works of the Software;
+  - Reverse engineer, disassemble, decompile, or otherwise attempt to derive
+    the source code of the Software;
+  - Redistribute, sublicense, sell, rent, lease, or transfer the Software or
+    any rights therein to any third party;
+  - Remove or alter any proprietary notices, labels, or marks on the Software;
+  - Use the Software for any purpose other than as permitted under your
+    commercial agreement with Cookiejar Technologies.
+
+DISCLAIMER OF WARRANTIES
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+COOKIEJAR TECHNOLOGIES BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE.
+
+CONTACT
+
+Cookiejar Technologies Private Limited
+support@cookiejar.co.in
+https://cookiejar.co.in

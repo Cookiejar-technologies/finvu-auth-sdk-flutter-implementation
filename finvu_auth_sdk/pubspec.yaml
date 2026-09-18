@@ -1,6 +1,6 @@
-name: finvu_auth_sdk_flutter
-description: "A new auth sdk from finvu AA to complete authentication process without entering the otp."
-version: 1.0.0
+name: finvu_authentication_sdk
+description: "Silent Network Authentication for Finvu Account Aggregator flows. Verifies a mobile number over the carrier network, with no OTP, on Android and iOS."
+version: 1.0.1
 homepage: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 repository: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 issue_tracker: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation/issues
@@ -12,13 +12,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pigeon: ^26.0.1
   webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  pigeon: 26.0.1 # pinned: generated files must match the checked-in output
 
 flutter:
   plugin:

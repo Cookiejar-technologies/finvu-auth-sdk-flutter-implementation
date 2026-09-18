@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:finvu_auth_sdk_flutter/finvu_auth_sdk.dart';
+import 'package:finvu_authentication_sdk/finvu_authentication_sdk.dart';
 import 'package:flutter/material.dart';
 
 class NativeViewPage extends StatefulWidget {
@@ -10,53 +10,54 @@ class NativeViewPage extends StatefulWidget {
 }
 
 class _NativeViewPageState extends State<NativeViewPage> {
-  // Constants you can edit at compile time
-  static const String APP_ID = '';
-  static const String REQUEST_ID = '';
+  static const String requestId = '';
 
   late final IFinvuNativeWrapper _native = FinvuAuthSdk.nativeWrapper();
 
-  final _phoneCtrl = TextEditingController();
+  final _snaLinkCtrl = TextEditingController();
 
   bool _initDone = false;
   String? _busy; // 'init' | 'start' | null
-  Map<String, Object?>? _lastResponse;
+  Map<String, dynamic>? _initResponse;
+  Map<String, dynamic>? _startResponse;
 
-  void _onPhoneChanged() => setState(() {});
+  void _onSnaLinkChanged() => setState(() {});
 
   @override
   void initState() {
     super.initState();
     _native.setEnvironment(Environment.development);
-    _phoneCtrl.addListener(_onPhoneChanged);
+    _snaLinkCtrl.addListener(_onSnaLinkChanged);
   }
 
   @override
   void dispose() {
-    _phoneCtrl.removeListener(_onPhoneChanged);
-    _phoneCtrl.dispose();
+    _snaLinkCtrl.removeListener(_onSnaLinkChanged);
+    _snaLinkCtrl.dispose();
     _native.cleanupAll();
     super.dispose();
   }
 
+  /// True unless the native SDK's own response carries the `error` key. The
+  /// native SDK decides the field shape entirely; this page doesn't check for
+  /// any particular field beyond that shared error envelope.
+  bool _isSuccess(Map<String, dynamic> res) => res['error'] == null;
+
   Future<void> _handleInitAuth() async {
     setState(() {
       _busy = 'init';
-      _lastResponse = null;
+      _initResponse = null;
     });
 
     try {
-      final res = await _native.initAuth(
-        InitConfig(appId: APP_ID, requestId: REQUEST_ID),
-      );
-
+      final res = await _native.initAuth(InitConfig(requestId: requestId));
       setState(() {
-        _lastResponse = _toDisplayMap(res);
-        _initDone = res.status == FinvuStatus.success;
+        _initResponse = res;
+        _initDone = _isSuccess(res);
       });
     } catch (e) {
       setState(() {
-        _lastResponse = {'error': e.toString()};
+        _initResponse = {'error': e.toString()};
         _initDone = false;
       });
     } finally {
@@ -68,51 +69,36 @@ class _NativeViewPageState extends State<NativeViewPage> {
     if (!_canStart) return;
     setState(() {
       _busy = 'start';
-      _lastResponse = null;
+      _startResponse = null;
     });
 
     try {
-      final res = await _native.startAuth(_phoneCtrl.text.trim());
-      setState(() {
-        _lastResponse = _toDisplayMap(res);
-      });
+      final res = await _native.startAuth(_snaLinkCtrl.text.trim());
+      setState(() => _startResponse = res);
     } catch (e) {
-      setState(() {
-        _lastResponse = {'error': e.toString()};
-      });
+      setState(() => _startResponse = {'error': e.toString()});
     } finally {
       setState(() => _busy = null);
     }
   }
 
-  bool get _canStart => _initDone && _phoneCtrl.text.trim().isNotEmpty;
+  bool get _canStart => _initDone && _snaLinkCtrl.text.trim().isNotEmpty;
 
-  Map<String, Object?> _toDisplayMap(FinvuAuthResult r) {
-    if (r.status == FinvuStatus.success) {
-      return {
-        'status': 'SUCCESS',
-        if (r.data?.token != null) 'token': r.data!.token,
-        if (r.data?.authType != null) 'authType': r.data!.authType,
-        ...r.data?.extra ?? const {},
-      };
-    } else {
-      return {
-        'error': {
-          'status': 'FAILURE',
-          if (r.error?.errorCode != null) 'errorCode': r.error!.errorCode,
-          if (r.error?.errorMessage != null)
-            'errorMessage': r.error!.errorMessage,
-          ...r.error?.details ?? const {},
-        },
-      };
-    }
-  }
-
-  Future<bool> _onWillPop() async {
-    try {
-      await _native.cleanupAll();
-    } catch (_) {}
-    return true;
+  Widget _responseBox(Map<String, dynamic>? response) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        response != null
+            ? const JsonEncoder.withIndent('  ').convert(response)
+            : 'No response yet.',
+        style: const TextStyle(fontFamily: 'monospace'),
+      ),
+    );
   }
 
   @override
@@ -121,8 +107,8 @@ class _NativeViewPageState extends State<NativeViewPage> {
     final isInitBusy = _busy == 'init';
     final isStartBusy = _busy == 'start';
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      onPopInvokedWithResult: (_, __) => _native.cleanupAll(),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Finvu Auth — Native View'),
@@ -142,7 +128,6 @@ class _NativeViewPageState extends State<NativeViewPage> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Init button only
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -150,21 +135,17 @@ class _NativeViewPageState extends State<NativeViewPage> {
                 child: Text(isInitBusy ? 'Initializing…' : 'Init Auth'),
               ),
             ),
+            const SizedBox(height: 12),
+            _responseBox(_initResponse),
 
             const Divider(height: 32),
 
-            // Start inputs
-            const Text(
-              'Start / Verify',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
             TextField(
-              controller: _phoneCtrl,
-              keyboardType: TextInputType.phone,
+              controller: _snaLinkCtrl,
+              keyboardType: TextInputType.url,
               decoration: InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter phone number',
+                labelText: 'SNA Link',
+                hintText: 'Enter SNA link',
                 border: border,
                 enabled: _initDone && !isStartBusy,
               ),
@@ -173,30 +154,12 @@ class _NativeViewPageState extends State<NativeViewPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: (_canStart && _busy == null)
-                    ? _handleStartAuth
-                    : null,
+                onPressed: (_canStart && _busy == null) ? _handleStartAuth : null,
                 child: Text(isStartBusy ? 'Starting…' : 'Start Auth'),
               ),
             ),
-
-            const Divider(height: 32),
-
-            const Text('SDK Response'),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _lastResponse != null
-                    ? const JsonEncoder.withIndent('  ').convert(_lastResponse)
-                    : 'No response yet.',
-                style: const TextStyle(fontFamily: 'monospace'),
-              ),
-            ),
+            const SizedBox(height: 12),
+            _responseBox(_startResponse),
           ],
         ),
       ),

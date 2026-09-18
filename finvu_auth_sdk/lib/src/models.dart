@@ -1,50 +1,65 @@
 // Public enums the app will use
 enum Environment { production, development }
 
-enum FinvuStatus { success, failure }
-
-// Public success/failure models
-class FinvuAuthSuccess {
-  final String? token;
-  final String? authType;
-  final Map<String, Object?> extra;
-  const FinvuAuthSuccess({this.token, this.authType, this.extra = const {}});
+// Convenience input DTOs
+class InitConfig {
+  final String requestId;
+  final String? entityId;
+  const InitConfig({required this.requestId, this.entityId});
 }
 
-class FinvuAuthFailure {
-  final String? errorCode;
-  final String? errorMessage;
-  final Map<String, Object?> details;
-  const FinvuAuthFailure({
-    this.errorCode,
-    this.errorMessage,
-    this.details = const {},
+/// Shared arguments for every device binding call.
+///
+/// Keys are scoped per user, so [userId] is always required. [entityId] falls back
+/// to the value given to `initSNA` when omitted.
+class DeviceBindingConfig {
+  final String userId;
+  final String? entityId;
+
+  const DeviceBindingConfig({required this.userId, this.entityId});
+}
+
+/// Arguments for enrolling a device.
+class DeviceBindingEnrollConfig extends DeviceBindingConfig {
+  /// Optional server nonce. Android returns an attestation chain proving the key
+  /// is hardware-backed when this is supplied; iOS has no equivalent API and
+  /// ignores it.
+  final String? attestationChallenge;
+
+  const DeviceBindingEnrollConfig({
+    required super.userId,
+    super.entityId,
+    this.attestationChallenge,
   });
 }
 
-class FinvuAuthResult {
-  final FinvuStatus status;
-  final FinvuAuthSuccess? data;
-  final FinvuAuthFailure? error;
-  const FinvuAuthResult.success(FinvuAuthSuccess d)
-    : status = FinvuStatus.success,
-      data = d,
-      error = null;
-  const FinvuAuthResult.failure(FinvuAuthFailure e)
-    : status = FinvuStatus.failure,
-      data = null,
-      error = e;
+/// Arguments for signing a server-issued challenge.
+class DeviceBindingSignConfig extends DeviceBindingConfig {
+  /// Signed as raw UTF-8 bytes, exactly as supplied — the server must verify
+  /// against the same bytes it sent.
+  final String challenge;
+
+  final String? promptTitle;
+  final String? promptSubtitle;
+
+  const DeviceBindingSignConfig({
+    required super.userId,
+    required this.challenge,
+    super.entityId,
+    this.promptTitle,
+    this.promptSubtitle,
+  });
 }
 
-// Convenience input DTOs
-class InitConfig {
-  final String appId;
-  final String requestId;
-  const InitConfig({required this.appId, required this.requestId});
-}
-
-class VerifyOtpReq {
-  final String phoneNumber;
-  final String? otp;
-  const VerifyOtpReq({required this.phoneNumber, this.otp});
-}
+// NOTE: There is deliberately no typed response model here (no
+// FinvuAuthResult, FinvuStatus, DeviceBindingResult, FinvuCapabilities, etc.).
+// Every call in IFinvuHost / IFinvuNativeWrapper returns a plain
+// `Map<String, dynamic>` decoded straight from the native Android/iOS SDK's
+// own JSON, unfiltered — exactly like the React Native bridge, which hands
+// the app whatever JSON.parse(nativeString) produces with no fixed schema.
+// A previous version of this file declared success/failure classes with
+// fields (statusCode, authType, token, requestId, userId, timestamp) that
+// neither native SDK actually returns, while real fields (mcc, mnc,
+// httpStatusCode) were dropped into a catch-all `extra` map — inconsistently
+// between Android and iOS. Do not reintroduce that pattern; read whatever key
+// the native SDK actually documents directly off the returned map instead.

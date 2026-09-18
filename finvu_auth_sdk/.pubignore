@@ -11,3 +11,7 @@ coverage/
 **/.DS_Store
 test/finvu_auth_sdk_method_channel_test.dart
 test/finvu_auth_sdk_test.dart
+
+# Downloaded at pod-install time by ios/finvu_auth_sdk_flutter.podspec's
+# prepare_command. Must never be part of the published archive (~15 MB).
+ios/FinvuAuthenticationSDK.xcframework/

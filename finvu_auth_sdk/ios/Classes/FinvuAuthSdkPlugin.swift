@@ -9,6 +9,16 @@ public class FinvuAuthSdkPlugin: NSObject, FlutterPlugin {
 }
 
 // MARK: - FinvuHostApi implementation
+//
+// Every method below hands back exactly the JSON the native
+// FinvuAuthenticationSDK produced, serialized as a string — no field
+// allow-list, no reshaping. This mirrors the React Native module
+// (`FinvuAuthSdkRnModule.swift`), which does the same JSONSerialization
+// passthrough on success. The only shape this plugin imposes is the small
+// `{"error": {...}}` envelope on failure — copied from that same RN module,
+// since a thrown FinvuAuthException has no JSON form of its own and
+// something has to serialize it. That keeps RN, Android and iOS all failing
+// the same way.
 
 final class FinvuHostApiImpl: FinvuHostApi {
 
@@ -22,12 +32,14 @@ final class FinvuHostApiImpl: FinvuHostApi {
   }
 
   func setUp(env: Environment) throws {
-    let mappedEnv: FinvuAuthEnvironment = (env == .production) ? .production : .development
+    let mappedEnv: FinvuAuthenticationSDK.FinvuAuthEnvironment = (env == .production) ? .production : .development
 
     guard let vc = currentRootViewController() else {
-      throw FlutterError(code: "NO_VIEW_CONTROLLER",
-                         message: "RootViewController not available",
-                         details: nil) as! any Error
+      // FlutterError does not conform to Swift's Error protocol, so it cannot be
+      // thrown here. Pigeon generates PigeonError for exactly this purpose.
+      throw PigeonError(code: "NO_VIEW_CONTROLLER",
+                        message: "RootViewController not available",
+                        details: nil)
     }
 
     // make sure setup happens on main
@@ -39,45 +51,60 @@ final class FinvuHostApiImpl: FinvuHostApi {
     }
   }
 
-  func initAuth(config: InitConfig, completion: @escaping (Result<FinvuAuthResult, Error>) -> Void) {
+  func initSNA(config: InitConfig, completion: @escaping (Result<String, Error>) -> Void) {
     let dict: [String: Any] = [
-      "appId": config.appId ?? "",
-      "requestId": config.requestId ?? ""
+      "requestId": config.requestId ?? "",
+      "entityId": config.entityId ?? ""
     ]
 
-    FinvuAuthenticationNativeWrapper.shared.initAuth(config: dict) { result in
-      switch result {
-      case .success(let payload):
-        completion(.success(self.successResult(from: payload)))
-      case .failure(let err):
-        completion(.success(self.failureResult(from: err)))
-      }
+    FinvuAuthenticationNativeWrapper.shared.initSNA(config: dict) { result in
+      completion(.success(Self.jsonString(from: result)))
     }
   }
 
-  func startAuth(phoneNumber: String, completion: @escaping (Result<FinvuAuthResult, Error>) -> Void) {
-    FinvuAuthenticationNativeWrapper.shared.startAuth(phoneNumber: phoneNumber) { result in
-      switch result {
-      case .success(let payload):
-        completion(.success(self.successResult(from: payload)))
-      case .failure(let err):
-        completion(.success(self.failureResult(from: err)))
-      }
+  func startSNA(snaLink: String, completion: @escaping (Result<String, Error>) -> Void) {
+    FinvuAuthenticationNativeWrapper.shared.startSNA(snaUrl: snaLink) { result in
+      completion(.success(Self.jsonString(from: result)))
     }
   }
 
-  func verifyOtp(request: VerifyOtpReq, completion: @escaping (Result<FinvuAuthResult, Error>) -> Void) {
-    FinvuAuthenticationNativeWrapper.shared.verifyOtp(
-      phoneNumber: request.phoneNumber ?? "",
-      otp: request.otp ?? ""
-    ) { result in
-      switch result {
-      case .success(let payload):
-        completion(.success(self.successResult(from: payload)))
-      case .failure(let err):
-        completion(.success(self.failureResult(from: err)))
+  // MARK: - Device binding
+
+  func getDeviceBindingState(
+    config: DeviceBindingConfig,
+    completion: @escaping (Result<String, Error>) -> Void
+  ) {
+    FinvuAuthenticationNativeWrapper.shared
+      .getDeviceBindingState(config: config.toDictionary()) { result in
+        completion(.success(Self.jsonString(from: result)))
       }
+  }
+
+  func enrollDeviceBinding(
+    config: DeviceBindingConfig,
+    completion: @escaping (Result<String, Error>) -> Void
+  ) {
+    FinvuAuthenticationNativeWrapper.shared
+      .enrollDeviceBinding(config: config.toDictionary()) { result in
+        completion(.success(Self.jsonString(from: result)))
+      }
+  }
+
+  func signDeviceBindingChallenge(
+    config: DeviceBindingConfig,
+    completion: @escaping (Result<String, Error>) -> Void
+  ) {
+    // The biometric prompt must be raised from the main thread.
+    DispatchQueue.main.async {
+      FinvuAuthenticationNativeWrapper.shared
+        .signDeviceBindingChallenge(config: config.toDictionary()) { result in
+          completion(.success(Self.jsonString(from: result)))
+        }
     }
+  }
+
+  func getCapabilities() throws -> String {
+    Self.jsonString(fromDict: FinvuAuthenticationNativeWrapper.shared.getCapabilities())
   }
 
   func cleanupAll() throws {
@@ -86,23 +113,57 @@ final class FinvuHostApiImpl: FinvuHostApi {
     }
   }
 
-  // MARK: - Helpers to adapt native wrapper <-> Pigeon types
+  // MARK: - Helpers
 
-  private func successResult(from dict: [String: Any]) -> FinvuAuthResult {
-    let success = FinvuAuthSuccessResponse(
-      token: dict["token"] as? String,
-      authType: dict["authType"] as? String,
-      extra: dict  // include everything for flexibility
-    )
-    return FinvuAuthResult(status: .success, data: success, error: nil)
+  /// Serializes a native result to the string the Dart side gets: the native
+  /// dictionary verbatim on success, or the shared error envelope on failure
+  /// (a thrown FinvuAuthException has no JSON form of its own).
+  private static func jsonString(from result: Result<[String: Any], FinvuAuthException>) -> String {
+    switch result {
+    case .success(let dict):
+      return jsonString(fromDict: dict)
+    case .failure(let err):
+      return errorJsonString(status: err.status, code: err.errorCode ?? "UNKNOWN_ERROR", message: err.errorMessage)
+    }
   }
 
-  private func failureResult(from err: FinvuAuthException) -> FinvuAuthResult {
-    let error = FinvuAuthFailureError(
-      errorCode: err.errorCode,
-      errorMessage: err.errorMessage,
-      details: [:]
-    )
-    return FinvuAuthResult(status: .failure, data: nil, error: error)
+  private static func jsonString(fromDict dict: [String: Any]) -> String {
+    guard let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
+          let jsonString = String(data: data, encoding: .utf8) else {
+      return "{}"
+    }
+    return jsonString
+  }
+
+  /// Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly, so RN, Android and
+  /// iOS all report failures in the same shape.
+  private static func errorJsonString(status: String = "FAILURE", code: String, message: String) -> String {
+    return jsonString(fromDict: [
+      "error": [
+        "status": status,
+        "errorCode": code,
+        "errorMessage": message,
+      ]
+    ])
+  }
+}
+
+// MARK: - Pigeon config → native dictionary
+
+private extension DeviceBindingConfig {
+  /// Only non-empty values are forwarded, so the native side applies its own defaults.
+  func toDictionary() -> [String: Any] {
+    var dict: [String: Any] = [:]
+    if let userId, !userId.isEmpty { dict["userId"] = userId }
+    if let entityId, !entityId.isEmpty { dict["entityId"] = entityId }
+    if let challenge, !challenge.isEmpty { dict["challenge"] = challenge }
+    if let attestationChallenge, !attestationChallenge.isEmpty {
+      dict["attestationChallenge"] = attestationChallenge
+    }
+    if let promptTitle, !promptTitle.isEmpty { dict["promptTitle"] = promptTitle }
+    if let promptSubtitle, !promptSubtitle.isEmpty {
+      dict["promptSubtitle"] = promptSubtitle
+    }
+    return dict
   }
 }

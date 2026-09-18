@@ -1,0 +1,136 @@
+name: Build and publish to pub.dev
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PACKAGE_DIR: finvu_auth_sdk
+  FLUTTER_VERSION: '3.38.x'
+
+jobs:
+  verify:
+    name: Verify package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Validate version matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(grep -E '^version:' pubspec.yaml | head -1 | sed -E 's/^version:[[:space:]]*//')
+          echo "Tag version:  $TAG_VERSION"
+          echo "pubspec.yaml: $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION does not match version $PKG_VERSION in pubspec.yaml"
+            exit 1
+          fi
+
+      - name: Verify (codegen, format, analyze, test, dry-run)
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: ./scripts/build.sh verify
+
+  build-android:
+    name: Build example (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Proves the Finvu Android SDK resolves from Maven Central without
+      # any GitHub Packages credentials.
+      - name: Build example APK
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: ./scripts/build.sh android
+
+  build-ios:
+    name: Build example (iOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Proves the podspec's prepare_command can download and untar
+      # FinvuAuthenticationSDK.xcframework from the finvu-auth-sdk-ios tag.
+      - name: Build example iOS app
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: ./scripts/build.sh ios
+
+  publish:
+    name: Publish to pub.dev
+    needs: [verify, build-android, build-ios]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # Required for pub.dev automated publishing via OIDC.
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: flutter pub get
+
+      # pub.dev accepts a GitHub OIDC token instead of a long-lived secret.
+      # Enable it once at:
+      #   pub.dev -> finvu_authentication_sdk -> Admin -> Automated publishing
+      # with repository Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
+      # and tag pattern v{{version}}.
+      - name: Exchange GitHub OIDC token for a pub.dev token
+        run: |
+          PUB_TOKEN=$(curl -sSf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://pub.dev" \
+            | jq -r '.value')
+          echo "::add-mask::$PUB_TOKEN"
+          echo "PUB_TOKEN=$PUB_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Configure pub.dev credentials
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: flutter pub token add https://pub.dev --env-var PUB_TOKEN
+
+      - name: Publish
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: ./scripts/build.sh publish

@@ -21,6 +21,16 @@ import com.finvu.android.authenticationwrapper.utils.FinvuAuthEnvironment
  * Bridges Pigeon <-> Native wrapper (Android).
  *
  * Implements the generated FinvuHostApi interface from Pigeon.
+ *
+ * Every method below hands back exactly the JSON the native
+ * [FinvuAuthenticationNativeWrapper] produced, as a string — no field
+ * allow-list, no reshaping. This mirrors the React Native module
+ * (`FinvuAuthSdkRnModule.kt`), which does the same
+ * `result.getOrNull()?.toString()` passthrough on success. The only shape
+ * this plugin imposes is the small `{"error": {...}}` envelope on failure —
+ * copied from that same RN module, since a thrown exception has no JSON form
+ * of its own and something has to serialize it. That keeps RN, Android and
+ * iOS all failing the same way.
  */
 class FinvuAuthSdkPlugin :
   FlutterPlugin,
@@ -37,7 +47,7 @@ class FinvuAuthSdkPlugin :
   // Environment for the wrapper (default to PRODUCTION)
   private var env: FinvuAuthEnvironment = FinvuAuthEnvironment.PRODUCTION
 
-  // Native wrapper instance (don’t rely on companion `.instance`)
+  // Native wrapper instance (don't rely on companion `.instance`)
   private val wrapper: FinvuAuthenticationNativeWrapper by lazy {
     FinvuAuthenticationNativeWrapper()
   }
@@ -88,61 +98,70 @@ class FinvuAuthSdkPlugin :
     maybeSetupWrapper()
   }
 
-  override fun initAuth(config: InitConfig, callback: (Result<FinvuAuthResult>) -> Unit) {
+  override fun initSNA(config: InitConfig, callback: (Result<String>) -> Unit) {
     val act = activity
     val sc = scope
     if (act == null || sc == null) {
-      callback(Result.success(buildFailure("ACTIVITY_OR_SCOPE_NOT_READY", "Activity/Scope not attached")))
+      callback(Result.success(errorJsonString(code = "ACTIVITY_OR_SCOPE_NOT_READY", message = "Activity/Scope not attached")))
       return
     }
 
     wrapper.setup(this.env, act, sc)
 
     val map = linkedMapOf<String, Any>(
-      "appId" to (config.appId ?: ""),
-      "requestId" to (config.requestId ?: "")
+      "requestId" to (config.requestId ?: ""),
+      "entityId" to (config.entityId ?: "")
     )
 
-    wrapper.initAuth(map) { nativeResult ->
-      nativeResult
-        .onSuccess { json -> callback(Result.success(buildSuccessFromJson(json))) }
-        .onFailure { err -> callback(Result.success(buildFailureFromThrowable(err))) }
-    }
+    wrapper.initSNA(map) { nativeResult -> resolve(nativeResult, callback) }
   }
 
-  override fun startAuth(phoneNumber: String, callback: (Result<FinvuAuthResult>) -> Unit) {
+  override fun startSNA(snaLink: String, callback: (Result<String>) -> Unit) {
     val act = activity
     val sc = scope
     if (act == null || sc == null) {
-      callback(Result.success(buildFailure("ACTIVITY_OR_SCOPE_NOT_READY", "Activity/Scope not attached")))
+      callback(Result.success(errorJsonString(code = "ACTIVITY_OR_SCOPE_NOT_READY", message = "Activity/Scope not attached")))
       return
     }
 
     wrapper.setup(this.env, act, sc)
 
-    wrapper.startAuth(phoneNumber) { nativeResult ->
-      nativeResult
-        .onSuccess { json -> callback(Result.success(buildSuccessFromJson(json))) }
-        .onFailure { err -> callback(Result.success(buildFailureFromThrowable(err))) }
+    wrapper.startSNA(snaLink) { nativeResult -> resolve(nativeResult, callback) }
+  }
+
+  /* -------------------- Pigeon: device binding -------------------- */
+
+  override fun getDeviceBindingState(
+    config: DeviceBindingConfig,
+    callback: (Result<String>) -> Unit,
+  ) {
+    withWrapper(callback) {
+      wrapper.getDeviceBindingState(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
     }
   }
 
-  override fun verifyOtp(request: VerifyOtpReq, callback: (Result<FinvuAuthResult>) -> Unit) {
-    val act = activity
-    val sc = scope
-    if (act == null || sc == null) {
-      callback(Result.success(buildFailure("ACTIVITY_OR_SCOPE_NOT_READY", "Activity/Scope not attached")))
-      return
-    }
-
-    wrapper.setup(this.env, act, sc)
-
-    wrapper.verifyOtp(request.phoneNumber ?: "", request.otp) { nativeResult ->
-      nativeResult
-        .onSuccess { json -> callback(Result.success(buildSuccessFromJson(json))) }
-        .onFailure { err -> callback(Result.success(buildFailureFromThrowable(err))) }
+  override fun enrollDeviceBinding(
+    config: DeviceBindingConfig,
+    callback: (Result<String>) -> Unit,
+  ) {
+    withWrapper(callback) {
+      wrapper.enrollDeviceBinding(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
     }
   }
+
+  override fun signDeviceBindingChallenge(
+    config: DeviceBindingConfig,
+    callback: (Result<String>) -> Unit,
+  ) {
+    withWrapper(callback) { act ->
+      // The biometric prompt must be raised from the main thread.
+      act.runOnUiThread {
+        wrapper.signDeviceBindingChallenge(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
+      }
+    }
+  }
+
+  override fun getCapabilities(): String = wrapper.getCapabilities().toString()
 
   override fun cleanupAll() {
     try {
@@ -165,75 +184,68 @@ class FinvuAuthSdkPlugin :
     }
   }
 
-  /** SUCCESS mapping: JSONObject -> FinvuAuthResult(status=SUCCESS, data=FinvuAuthSuccessResponse) */
-  private fun buildSuccessFromJson(json: JSONObject?): FinvuAuthResult {
-    val safe = json ?: JSONObject()
-
-    val token = safe.optString("token", null)
-    val authType = safe.optString("authType", null)
-    val extraMap = mutableMapOf<String, Any?>()
-
-    // put everything else in 'extra', excluding known keys
-    val exclude = setOf("token", "authType", "status", "error", "errorCode", "errorMessage")
-    val keys = safe.keys()
-    while (keys.hasNext()) {
-      val k = keys.next()
-      if (!exclude.contains(k)) extraMap[k] = safe.opt(k)
-    }
-
-    val payload = FinvuAuthSuccessResponse(
-      token = token,
-      authType = authType,
-      extra = if (extraMap.isEmpty()) null else extraMap
-    )
-
-    return FinvuAuthResult(
-      status = FinvuStatus.SUCCESS,
-      data = payload,
-      error = null
-    )
+  /**
+   * Turns a native `Result<JSONObject>` into the string the Dart side gets:
+   * the JSON verbatim on success, the shared error envelope on failure.
+   */
+  private fun resolve(result: Result<JSONObject>, callback: (Result<String>) -> Unit) {
+    result
+      .onSuccess { json -> callback(Result.success(json?.toString() ?: "{}")) }
+      .onFailure { err -> callback(Result.success(errorJsonStringFrom(err))) }
   }
 
-  /** FAILURE mapping: Throwable -> FinvuAuthResult(status=FAILURE, error=FinvuAuthFailureError) */
-  private fun buildFailureFromThrowable(t: Throwable): FinvuAuthResult {
-    return if (t is FinvuAuthException) {
-      val err = FinvuAuthFailureError(
-        errorCode = t.errorCode,
-        errorMessage = t.errorMessage.ifBlank { t.message ?: "Authentication failed" },
-        details = mapOf(
-          "status" to t.status // e.g., FAILURE (string from native)
-        )
-      )
-      FinvuAuthResult(
-        status = FinvuStatus.FAILURE,
-        data = null,
-        error = err
-      )
-    } else {
-      val err = FinvuAuthFailureError(
-        errorCode = t.javaClass.simpleName,
-        errorMessage = t.message ?: "Unknown error",
-        details = mapOf("cause" to (t.cause?.toString() ?: "null"))
-      )
-      FinvuAuthResult(
-        status = FinvuStatus.FAILURE,
-        data = null,
-        error = err
-      )
+  /**
+   * Ensures the wrapper is set up before a device binding call, reporting the
+   * failure through the callback rather than dropping it.
+   */
+  private fun withWrapper(
+    callback: (Result<String>) -> Unit,
+    block: (Activity) -> Unit,
+  ) {
+    val act = activity
+    val sc = scope
+    if (act == null || sc == null) {
+      callback(Result.success(errorJsonString(code = "ACTIVITY_OR_SCOPE_NOT_READY", message = "Activity/Scope not attached")))
+      return
     }
+    wrapper.setup(this.env, act, sc)
+    block(act)
   }
 
-  /** Local failure helper */
-  private fun buildFailure(code: String, message: String): FinvuAuthResult {
-    val err = FinvuAuthFailureError(
-      errorCode = code,
-      errorMessage = message,
-      details = null
-    )
-    return FinvuAuthResult(
-      status = FinvuStatus.FAILURE,
-      data = null,
-      error = err
+  /** Only non-blank values are forwarded, so the native side applies its own defaults. */
+  private fun DeviceBindingConfig.toMap(): MutableMap<String, Any> {
+    val map = linkedMapOf<String, Any>()
+    userId?.takeIf { it.isNotBlank() }?.let { map["userId"] = it }
+    entityId?.takeIf { it.isNotBlank() }?.let { map["entityId"] = it }
+    challenge?.takeIf { it.isNotBlank() }?.let { map["challenge"] = it }
+    attestationChallenge?.takeIf { it.isNotBlank() }
+      ?.let { map["attestationChallenge"] = it }
+    promptTitle?.takeIf { it.isNotBlank() }?.let { map["promptTitle"] = it }
+    promptSubtitle?.takeIf { it.isNotBlank() }?.let { map["promptSubtitle"] = it }
+    return map
+  }
+
+  /**
+   * Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly, so RN, Android and
+   * iOS all report failures in the same shape.
+   */
+  private fun errorJsonString(status: String = "FAILURE", code: String, message: String): String {
+    return JSONObject().apply {
+      put("error", JSONObject().apply {
+        put("status", status)
+        put("errorCode", code)
+        put("errorMessage", message)
+      })
+    }.toString()
+  }
+
+  /** Mirrors the RN module's `(exceptionOrNull() as? FinvuAuthException)` handling. */
+  private fun errorJsonStringFrom(t: Throwable): String {
+    val error = t as? FinvuAuthException
+    return errorJsonString(
+      status = error?.status ?: "FAILURE",
+      code = error?.errorCode ?: "UNKNOWN_ERROR",
+      message = error?.errorMessage ?: "Unknown error occurred."
     )
   }
 }

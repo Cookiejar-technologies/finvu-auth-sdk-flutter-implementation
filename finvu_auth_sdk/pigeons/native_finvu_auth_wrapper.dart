@@ -11,60 +11,78 @@ import 'package:pigeon/pigeon.dart';
       // Remove if your Pigeon version doesn't support it
       errorClassName: 'NativeFinvuAuthError',
     ),
-    dartPackageName: 'finvu_auth_sdk',
+    dartPackageName: 'finvu_authentication_sdk',
   ),
 )
 class InitConfig {
-  String? appId;
   String? requestId;
+  String? entityId;
 }
 
 enum Environment { production, development }
 
-enum ErrorCode { invalidRequest, genericError }
+/// Arguments for every device binding call. Device binding keys are scoped per
+/// user, so [userId] is always required; the other fields are per-operation.
+class DeviceBindingConfig {
+  /// Required. Keys are scoped to this user.
+  String? userId;
 
-enum FinvuStatus { success, failure }
+  /// Optional; falls back to the entityId given to initSNA.
+  String? entityId;
 
-class FinvuAuthSuccessResponse {
-  String? token; // Authentication token
-  String? authType; // Authentication method used
-  Map<String, Object?>? extra; // Additional fields
+  /// Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes.
+  String? challenge;
+
+  /// Optional server nonce for enrollDeviceBinding. Android returns an attestation
+  /// chain when supplied; iOS has no equivalent API and ignores it.
+  String? attestationChallenge;
+
+  String? promptTitle;
+  String? promptSubtitle;
 }
 
-class FinvuAuthFailureError {
-  String? errorCode;
-  String? errorMessage;
-  Map<String, Object?>? details; // Additional error details
-}
-
-class FinvuAuthResult {
-  /// Discriminator: SUCCESS or FAILURE
-  FinvuStatus? status;
-
-  /// Present when status == SUCCESS
-  FinvuAuthSuccessResponse? data;
-
-  /// Present when status == FAILURE
-  FinvuAuthFailureError? error;
-}
-
-class VerifyOtpReq {
-  String? phoneNumber;
-  String? otp;
-}
-
+/// Every call below hands back exactly the JSON the native Android/iOS SDK
+/// produced, as a raw string — deliberately untyped. This mirrors the React
+/// Native bridge (`FinvuAuthSdkRnModule`), which does `result.toString()` /
+/// `JSONSerialization` passthrough rather than mapping onto a fixed schema.
+/// Do NOT reintroduce a typed success/failure model here: previous versions
+/// of this schema declared fields (statusCode, authType, token, requestId,
+/// userId, timestamp) that neither native SDK has ever actually returned,
+/// while real fields (mcc, mnc, httpStatusCode) got silently dropped into a
+/// catch-all map — inconsistently between Android and iOS. Returning the raw
+/// string sidesteps that class of bug entirely: whatever native sends is
+/// exactly what the Dart caller gets, decoded but not filtered.
+///
+/// The one shape this bridge imposes is on failure: native calls throw an
+/// exception rather than returning JSON, so something has to serialize it.
+/// Both platform plugins wrap that into the same small
+/// `{"error": {"status", "errorCode", "errorMessage"}}` envelope the RN
+/// module uses, so failures look identical across RN, Android-native, and
+/// iOS-native callers.
 @HostApi()
 abstract class FinvuHostApi {
   void setUp(Environment env);
 
+  // SNA factor. Returns the native SDK's own response JSON, unmodified.
   @async
-  FinvuAuthResult initAuth(InitConfig config);
+  String initSNA(InitConfig config);
 
   @async
-  FinvuAuthResult startAuth(String phoneNumber);
+  String startSNA(String snaLink);
+
+  // Device binding factor. Same contract: raw native JSON on success, the
+  // shared {"error": {...}} envelope on failure.
+  @async
+  String getDeviceBindingState(DeviceBindingConfig config);
 
   @async
-  FinvuAuthResult verifyOtp(VerifyOtpReq request);
+  String enrollDeviceBinding(DeviceBindingConfig config);
+
+  @async
+  String signDeviceBindingChallenge(DeviceBindingConfig config);
+
+  /// Raw JSON from the native SDK's own capabilities dictionary.
+  String getCapabilities();
 
   void cleanupAll();
 }
