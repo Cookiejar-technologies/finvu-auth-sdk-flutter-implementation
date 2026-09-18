@@ -57,54 +57,15 @@ final class FinvuHostApiImpl: FinvuHostApi {
       "entityId": config.entityId ?? ""
     ]
 
-    FinvuAuthenticationNativeWrapper.shared.initSNA(config: dict) { result in
+    FinvuAuthenticationNativeWrapper.shared.initAuth(config: dict) { result in
       completion(.success(Self.jsonString(from: result)))
     }
   }
 
   func startSNA(snaLink: String, completion: @escaping (Result<String, Error>) -> Void) {
-    FinvuAuthenticationNativeWrapper.shared.startSNA(snaUrl: snaLink) { result in
+    FinvuAuthenticationNativeWrapper.shared.startAuth(snaUrl: snaLink) { result in
       completion(.success(Self.jsonString(from: result)))
     }
-  }
-
-  // MARK: - Device binding
-
-  func getDeviceBindingState(
-    config: DeviceBindingConfig,
-    completion: @escaping (Result<String, Error>) -> Void
-  ) {
-    FinvuAuthenticationNativeWrapper.shared
-      .getDeviceBindingState(config: config.toDictionary()) { result in
-        completion(.success(Self.jsonString(from: result)))
-      }
-  }
-
-  func enrollDeviceBinding(
-    config: DeviceBindingConfig,
-    completion: @escaping (Result<String, Error>) -> Void
-  ) {
-    FinvuAuthenticationNativeWrapper.shared
-      .enrollDeviceBinding(config: config.toDictionary()) { result in
-        completion(.success(Self.jsonString(from: result)))
-      }
-  }
-
-  func signDeviceBindingChallenge(
-    config: DeviceBindingConfig,
-    completion: @escaping (Result<String, Error>) -> Void
-  ) {
-    // The biometric prompt must be raised from the main thread.
-    DispatchQueue.main.async {
-      FinvuAuthenticationNativeWrapper.shared
-        .signDeviceBindingChallenge(config: config.toDictionary()) { result in
-          completion(.success(Self.jsonString(from: result)))
-        }
-    }
-  }
-
-  func getCapabilities() throws -> String {
-    Self.jsonString(fromDict: FinvuAuthenticationNativeWrapper.shared.getCapabilities())
   }
 
   func cleanupAll() throws {
@@ -145,25 +106,5 @@ final class FinvuHostApiImpl: FinvuHostApi {
         "errorMessage": message,
       ]
     ])
-  }
-}
-
-// MARK: - Pigeon config → native dictionary
-
-private extension DeviceBindingConfig {
-  /// Only non-empty values are forwarded, so the native side applies its own defaults.
-  func toDictionary() -> [String: Any] {
-    var dict: [String: Any] = [:]
-    if let userId, !userId.isEmpty { dict["userId"] = userId }
-    if let entityId, !entityId.isEmpty { dict["entityId"] = entityId }
-    if let challenge, !challenge.isEmpty { dict["challenge"] = challenge }
-    if let attestationChallenge, !attestationChallenge.isEmpty {
-      dict["attestationChallenge"] = attestationChallenge
-    }
-    if let promptTitle, !promptTitle.isEmpty { dict["promptTitle"] = promptTitle }
-    if let promptSubtitle, !promptSubtitle.isEmpty {
-      dict["promptSubtitle"] = promptSubtitle
-    }
-    return dict
   }
 }

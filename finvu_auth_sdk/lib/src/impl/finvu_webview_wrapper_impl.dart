@@ -58,48 +58,6 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
             case 'startAuth':
             case 'startSNA':
               return _host.startSNA('${payload['snaLink'] ?? ''}');
-            case 'getDeviceBindingState':
-              {
-                final m = _config(payload);
-                return _host.getDeviceBindingState(
-                  DeviceBindingConfig(
-                    userId: '${m['userId'] ?? ''}',
-                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
-                  ),
-                );
-              }
-            case 'enrollDeviceBinding':
-              {
-                final m = _config(payload);
-                return _host.enrollDeviceBinding(
-                  DeviceBindingEnrollConfig(
-                    userId: '${m['userId'] ?? ''}',
-                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
-                    attestationChallenge: m['attestationChallenge'] == null
-                        ? null
-                        : '${m['attestationChallenge']}',
-                  ),
-                );
-              }
-            case 'signDeviceBindingChallenge':
-              {
-                final m = _config(payload);
-                return _host.signDeviceBindingChallenge(
-                  DeviceBindingSignConfig(
-                    userId: '${m['userId'] ?? ''}',
-                    challenge: '${m['challenge'] ?? ''}',
-                    entityId: m['entityId'] == null ? null : '${m['entityId']}',
-                    promptTitle: m['promptTitle'] == null
-                        ? null
-                        : '${m['promptTitle']}',
-                    promptSubtitle: m['promptSubtitle'] == null
-                        ? null
-                        : '${m['promptSubtitle']}',
-                  ),
-                );
-              }
-            case 'getCapabilities':
-              return _host.getCapabilities();
             default:
               return {
                 'error': {
@@ -136,20 +94,4 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
 
   @override
   Future<void> cleanupAll() => _host.cleanupAll();
-
-  /// Device binding arguments arrive under a single `config` key, which the page
-  /// may send either as a nested object or as a JSON string. Both are accepted so
-  /// the same web bundle works against every platform's bridge.
-  Map<String, dynamic> _config(Map<String, dynamic> payload) {
-    final raw = payload['config'];
-    if (raw is String) {
-      try {
-        return Map<String, dynamic>.from(jsonDecode(raw));
-      } catch (_) {
-        return const {};
-      }
-    }
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    return const {};
-  }
 }

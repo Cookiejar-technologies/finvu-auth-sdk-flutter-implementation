@@ -75,79 +75,6 @@ class InitConfig {
   int get hashCode => Object.hashAll(_toList());
 }
 
-/// Arguments for every device binding call. Device binding keys are scoped per
-/// user, so [userId] is always required; the other fields are per-operation.
-class DeviceBindingConfig {
-  DeviceBindingConfig({
-    this.userId,
-    this.entityId,
-    this.challenge,
-    this.attestationChallenge,
-    this.promptTitle,
-    this.promptSubtitle,
-  });
-
-  /// Required. Keys are scoped to this user.
-  String? userId;
-
-  /// Optional; falls back to the entityId given to initSNA.
-  String? entityId;
-
-  /// Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes.
-  String? challenge;
-
-  /// Optional server nonce for enrollDeviceBinding. Android returns an attestation
-  /// chain when supplied; iOS has no equivalent API and ignores it.
-  String? attestationChallenge;
-
-  String? promptTitle;
-
-  String? promptSubtitle;
-
-  List<Object?> _toList() {
-    return <Object?>[
-      userId,
-      entityId,
-      challenge,
-      attestationChallenge,
-      promptTitle,
-      promptSubtitle,
-    ];
-  }
-
-  Object encode() {
-    return _toList();
-  }
-
-  static DeviceBindingConfig decode(Object result) {
-    result as List<Object?>;
-    return DeviceBindingConfig(
-      userId: result[0] as String?,
-      entityId: result[1] as String?,
-      challenge: result[2] as String?,
-      attestationChallenge: result[3] as String?,
-      promptTitle: result[4] as String?,
-      promptSubtitle: result[5] as String?,
-    );
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  bool operator ==(Object other) {
-    if (other is! DeviceBindingConfig || other.runtimeType != runtimeType) {
-      return false;
-    }
-    if (identical(this, other)) {
-      return true;
-    }
-    return _deepEquals(encode(), other.encode());
-  }
-
-  @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList());
-}
-
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -160,9 +87,6 @@ class _PigeonCodec extends StandardMessageCodec {
       writeValue(buffer, value.index);
     } else if (value is InitConfig) {
       buffer.putUint8(130);
-      writeValue(buffer, value.encode());
-    } else if (value is DeviceBindingConfig) {
-      buffer.putUint8(131);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -177,8 +101,6 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : Environment.values[value];
       case 130:
         return InitConfig.decode(readValue(buffer)!);
-      case 131:
-        return DeviceBindingConfig.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -291,133 +213,6 @@ class FinvuHostApi {
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
       <Object?>[snaLink],
     );
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_sendFuture as List<Object?>?;
-    if (pigeonVar_replyList == null) {
-      throw _createConnectionError(pigeonVar_channelName);
-    } else if (pigeonVar_replyList.length > 1) {
-      throw PlatformException(
-        code: pigeonVar_replyList[0]! as String,
-        message: pigeonVar_replyList[1] as String?,
-        details: pigeonVar_replyList[2],
-      );
-    } else if (pigeonVar_replyList[0] == null) {
-      throw PlatformException(
-        code: 'null-error',
-        message: 'Host platform returned null value for non-null return value.',
-      );
-    } else {
-      return (pigeonVar_replyList[0] as String?)!;
-    }
-  }
-
-  Future<String> getDeviceBindingState(DeviceBindingConfig config) async {
-    final String pigeonVar_channelName =
-        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getDeviceBindingState$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel =
-        BasicMessageChannel<Object?>(
-          pigeonVar_channelName,
-          pigeonChannelCodec,
-          binaryMessenger: pigeonVar_binaryMessenger,
-        );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[config],
-    );
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_sendFuture as List<Object?>?;
-    if (pigeonVar_replyList == null) {
-      throw _createConnectionError(pigeonVar_channelName);
-    } else if (pigeonVar_replyList.length > 1) {
-      throw PlatformException(
-        code: pigeonVar_replyList[0]! as String,
-        message: pigeonVar_replyList[1] as String?,
-        details: pigeonVar_replyList[2],
-      );
-    } else if (pigeonVar_replyList[0] == null) {
-      throw PlatformException(
-        code: 'null-error',
-        message: 'Host platform returned null value for non-null return value.',
-      );
-    } else {
-      return (pigeonVar_replyList[0] as String?)!;
-    }
-  }
-
-  Future<String> enrollDeviceBinding(DeviceBindingConfig config) async {
-    final String pigeonVar_channelName =
-        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.enrollDeviceBinding$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel =
-        BasicMessageChannel<Object?>(
-          pigeonVar_channelName,
-          pigeonChannelCodec,
-          binaryMessenger: pigeonVar_binaryMessenger,
-        );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[config],
-    );
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_sendFuture as List<Object?>?;
-    if (pigeonVar_replyList == null) {
-      throw _createConnectionError(pigeonVar_channelName);
-    } else if (pigeonVar_replyList.length > 1) {
-      throw PlatformException(
-        code: pigeonVar_replyList[0]! as String,
-        message: pigeonVar_replyList[1] as String?,
-        details: pigeonVar_replyList[2],
-      );
-    } else if (pigeonVar_replyList[0] == null) {
-      throw PlatformException(
-        code: 'null-error',
-        message: 'Host platform returned null value for non-null return value.',
-      );
-    } else {
-      return (pigeonVar_replyList[0] as String?)!;
-    }
-  }
-
-  Future<String> signDeviceBindingChallenge(DeviceBindingConfig config) async {
-    final String pigeonVar_channelName =
-        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.signDeviceBindingChallenge$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel =
-        BasicMessageChannel<Object?>(
-          pigeonVar_channelName,
-          pigeonChannelCodec,
-          binaryMessenger: pigeonVar_binaryMessenger,
-        );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[config],
-    );
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_sendFuture as List<Object?>?;
-    if (pigeonVar_replyList == null) {
-      throw _createConnectionError(pigeonVar_channelName);
-    } else if (pigeonVar_replyList.length > 1) {
-      throw PlatformException(
-        code: pigeonVar_replyList[0]! as String,
-        message: pigeonVar_replyList[1] as String?,
-        details: pigeonVar_replyList[2],
-      );
-    } else if (pigeonVar_replyList[0] == null) {
-      throw PlatformException(
-        code: 'null-error',
-        message: 'Host platform returned null value for non-null return value.',
-      );
-    } else {
-      return (pigeonVar_replyList[0] as String?)!;
-    }
-  }
-
-  /// Raw JSON from the native SDK's own capabilities dictionary.
-  Future<String> getCapabilities() async {
-    final String pigeonVar_channelName =
-        'dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getCapabilities$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel =
-        BasicMessageChannel<Object?>(
-          pigeonVar_channelName,
-          pigeonChannelCodec,
-          binaryMessenger: pigeonVar_binaryMessenger,
-        );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {

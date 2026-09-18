@@ -13,25 +13,3 @@ pig.Environment toPigEnv(pub.Environment e) => e == pub.Environment.development
 
 pig.InitConfig toPigInit(pub.InitConfig c) =>
     pig.InitConfig(requestId: c.requestId, entityId: c.entityId);
-
-/// One Pigeon config carries the union of every device binding call's arguments;
-/// each overload below fills in only the fields its call actually uses.
-pig.DeviceBindingConfig toPigDeviceBinding(pub.DeviceBindingConfig c) {
-  if (c is pub.DeviceBindingSignConfig) {
-    return pig.DeviceBindingConfig(
-      userId: c.userId,
-      entityId: c.entityId,
-      challenge: c.challenge,
-      promptTitle: c.promptTitle,
-      promptSubtitle: c.promptSubtitle,
-    );
-  }
-  if (c is pub.DeviceBindingEnrollConfig) {
-    return pig.DeviceBindingConfig(
-      userId: c.userId,
-      entityId: c.entityId,
-      attestationChallenge: c.attestationChallenge,
-    );
-  }
-  return pig.DeviceBindingConfig(userId: c.userId, entityId: c.entityId);
-}

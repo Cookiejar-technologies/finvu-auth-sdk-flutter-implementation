@@ -16,16 +16,5 @@ abstract class IFinvuHost {
   Future<Map<String, dynamic>> initSNA(InitConfig cfg);
   Future<Map<String, dynamic>> startSNA(String snaLink);
 
-  // Device binding factor.
-  Future<Map<String, dynamic>> getDeviceBindingState(DeviceBindingConfig cfg);
-  Future<Map<String, dynamic>> enrollDeviceBinding(
-    DeviceBindingEnrollConfig cfg,
-  );
-  Future<Map<String, dynamic>> signDeviceBindingChallenge(
-    DeviceBindingSignConfig cfg,
-  );
-
-  Future<Map<String, dynamic>> getCapabilities();
-
   Future<void> cleanupAll();
 }

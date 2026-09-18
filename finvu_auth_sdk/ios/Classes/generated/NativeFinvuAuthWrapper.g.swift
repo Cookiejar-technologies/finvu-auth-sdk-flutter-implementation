@@ -162,59 +162,6 @@ struct InitConfig: Hashable {
   }
 }
 
-/// Arguments for every device binding call. Device binding keys are scoped per
-/// user, so [userId] is always required; the other fields are per-operation.
-///
-/// Generated class from Pigeon that represents data sent in messages.
-struct DeviceBindingConfig: Hashable {
-  /// Required. Keys are scoped to this user.
-  var userId: String? = nil
-  /// Optional; falls back to the entityId given to initSNA.
-  var entityId: String? = nil
-  /// Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes.
-  var challenge: String? = nil
-  /// Optional server nonce for enrollDeviceBinding. Android returns an attestation
-  /// chain when supplied; iOS has no equivalent API and ignores it.
-  var attestationChallenge: String? = nil
-  var promptTitle: String? = nil
-  var promptSubtitle: String? = nil
-
-
-  // swift-format-ignore: AlwaysUseLowerCamelCase
-  static func fromList(_ pigeonVar_list: [Any?]) -> DeviceBindingConfig? {
-    let userId: String? = nilOrValue(pigeonVar_list[0])
-    let entityId: String? = nilOrValue(pigeonVar_list[1])
-    let challenge: String? = nilOrValue(pigeonVar_list[2])
-    let attestationChallenge: String? = nilOrValue(pigeonVar_list[3])
-    let promptTitle: String? = nilOrValue(pigeonVar_list[4])
-    let promptSubtitle: String? = nilOrValue(pigeonVar_list[5])
-
-    return DeviceBindingConfig(
-      userId: userId,
-      entityId: entityId,
-      challenge: challenge,
-      attestationChallenge: attestationChallenge,
-      promptTitle: promptTitle,
-      promptSubtitle: promptSubtitle
-    )
-  }
-  func toList() -> [Any?] {
-    return [
-      userId,
-      entityId,
-      challenge,
-      attestationChallenge,
-      promptTitle,
-      promptSubtitle,
-    ]
-  }
-  static func == (lhs: DeviceBindingConfig, rhs: DeviceBindingConfig) -> Bool {
-    return deepEqualsNativeFinvuAuthWrapper(lhs.toList(), rhs.toList())  }
-  func hash(into hasher: inout Hasher) {
-    deepHashNativeFinvuAuthWrapper(value: toList(), hasher: &hasher)
-  }
-}
-
 private class NativeFinvuAuthWrapperPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -226,8 +173,6 @@ private class NativeFinvuAuthWrapperPigeonCodecReader: FlutterStandardReader {
       return nil
     case 130:
       return InitConfig.fromList(self.readValue() as! [Any?])
-    case 131:
-      return DeviceBindingConfig.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -241,9 +186,6 @@ private class NativeFinvuAuthWrapperPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.rawValue)
     } else if let value = value as? InitConfig {
       super.writeByte(130)
-      super.writeValue(value.toList())
-    } else if let value = value as? DeviceBindingConfig {
-      super.writeByte(131)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -290,11 +232,6 @@ protocol FinvuHostApi {
   func setUp(env: Environment) throws
   func initSNA(config: InitConfig, completion: @escaping (Result<String, Error>) -> Void)
   func startSNA(snaLink: String, completion: @escaping (Result<String, Error>) -> Void)
-  func getDeviceBindingState(config: DeviceBindingConfig, completion: @escaping (Result<String, Error>) -> Void)
-  func enrollDeviceBinding(config: DeviceBindingConfig, completion: @escaping (Result<String, Error>) -> Void)
-  func signDeviceBindingChallenge(config: DeviceBindingConfig, completion: @escaping (Result<String, Error>) -> Void)
-  /// Raw JSON from the native SDK's own capabilities dictionary.
-  func getCapabilities() throws -> String
   func cleanupAll() throws
 }
 
@@ -352,71 +289,6 @@ class FinvuHostApiSetup {
       }
     } else {
       startSNAChannel.setMessageHandler(nil)
-    }
-    let getDeviceBindingStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getDeviceBindingState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      getDeviceBindingStateChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let configArg = args[0] as! DeviceBindingConfig
-        api.getDeviceBindingState(config: configArg) { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      getDeviceBindingStateChannel.setMessageHandler(nil)
-    }
-    let enrollDeviceBindingChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.enrollDeviceBinding\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      enrollDeviceBindingChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let configArg = args[0] as! DeviceBindingConfig
-        api.enrollDeviceBinding(config: configArg) { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      enrollDeviceBindingChannel.setMessageHandler(nil)
-    }
-    let signDeviceBindingChallengeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.signDeviceBindingChallenge\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      signDeviceBindingChallengeChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let configArg = args[0] as! DeviceBindingConfig
-        api.signDeviceBindingChallenge(config: configArg) { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      signDeviceBindingChallengeChannel.setMessageHandler(nil)
-    }
-    /// Raw JSON from the native SDK's own capabilities dictionary.
-    let getCapabilitiesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getCapabilities\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      getCapabilitiesChannel.setMessageHandler { _, reply in
-        do {
-          let result = try api.getCapabilities()
-          reply(wrapResult(result))
-        } catch {
-          reply(wrapError(error))
-        }
-      }
-    } else {
-      getCapabilitiesChannel.setMessageHandler(nil)
     }
     let cleanupAllChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.cleanupAll\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

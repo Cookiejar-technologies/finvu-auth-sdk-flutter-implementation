@@ -8,49 +8,6 @@ class InitConfig {
   const InitConfig({required this.requestId, this.entityId});
 }
 
-/// Shared arguments for every device binding call.
-///
-/// Keys are scoped per user, so [userId] is always required. [entityId] falls back
-/// to the value given to `initSNA` when omitted.
-class DeviceBindingConfig {
-  final String userId;
-  final String? entityId;
-
-  const DeviceBindingConfig({required this.userId, this.entityId});
-}
-
-/// Arguments for enrolling a device.
-class DeviceBindingEnrollConfig extends DeviceBindingConfig {
-  /// Optional server nonce. Android returns an attestation chain proving the key
-  /// is hardware-backed when this is supplied; iOS has no equivalent API and
-  /// ignores it.
-  final String? attestationChallenge;
-
-  const DeviceBindingEnrollConfig({
-    required super.userId,
-    super.entityId,
-    this.attestationChallenge,
-  });
-}
-
-/// Arguments for signing a server-issued challenge.
-class DeviceBindingSignConfig extends DeviceBindingConfig {
-  /// Signed as raw UTF-8 bytes, exactly as supplied — the server must verify
-  /// against the same bytes it sent.
-  final String challenge;
-
-  final String? promptTitle;
-  final String? promptSubtitle;
-
-  const DeviceBindingSignConfig({
-    required super.userId,
-    required this.challenge,
-    super.entityId,
-    this.promptTitle,
-    this.promptSubtitle,
-  });
-}
-
 // NOTE: There is deliberately no typed response model here (no
 // FinvuAuthResult, FinvuStatus, DeviceBindingResult, FinvuCapabilities, etc.).
 // Every call in IFinvuHost / IFinvuNativeWrapper returns a plain

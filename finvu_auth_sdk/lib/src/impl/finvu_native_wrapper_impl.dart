@@ -24,25 +24,6 @@ class FinvuNativeWrapperImpl implements IFinvuNativeWrapper {
   @override
   Future<Map<String, dynamic>> startAuth(String snaLink) => startSNA(snaLink);
 
-  // ── Device binding factor ───────────────────────────────────────────────
-
-  @override
-  Future<Map<String, dynamic>> getDeviceBindingState(DeviceBindingConfig cfg) =>
-      _host.getDeviceBindingState(cfg);
-
-  @override
-  Future<Map<String, dynamic>> enrollDeviceBinding(
-    DeviceBindingEnrollConfig cfg,
-  ) => _host.enrollDeviceBinding(cfg);
-
-  @override
-  Future<Map<String, dynamic>> signDeviceBindingChallenge(
-    DeviceBindingSignConfig cfg,
-  ) => _host.signDeviceBindingChallenge(cfg);
-
-  @override
-  Future<Map<String, dynamic>> getCapabilities() => _host.getCapabilities();
-
   @override
   Future<void> cleanupAll() => _host.cleanupAll();
 }

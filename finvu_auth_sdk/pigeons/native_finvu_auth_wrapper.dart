@@ -21,26 +21,6 @@ class InitConfig {
 
 enum Environment { production, development }
 
-/// Arguments for every device binding call. Device binding keys are scoped per
-/// user, so [userId] is always required; the other fields are per-operation.
-class DeviceBindingConfig {
-  /// Required. Keys are scoped to this user.
-  String? userId;
-
-  /// Optional; falls back to the entityId given to initSNA.
-  String? entityId;
-
-  /// Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes.
-  String? challenge;
-
-  /// Optional server nonce for enrollDeviceBinding. Android returns an attestation
-  /// chain when supplied; iOS has no equivalent API and ignores it.
-  String? attestationChallenge;
-
-  String? promptTitle;
-  String? promptSubtitle;
-}
-
 /// Every call below hands back exactly the JSON the native Android/iOS SDK
 /// produced, as a raw string — deliberately untyped. This mirrors the React
 /// Native bridge (`FinvuAuthSdkRnModule`), which does `result.toString()` /
@@ -69,20 +49,6 @@ abstract class FinvuHostApi {
 
   @async
   String startSNA(String snaLink);
-
-  // Device binding factor. Same contract: raw native JSON on success, the
-  // shared {"error": {...}} envelope on failure.
-  @async
-  String getDeviceBindingState(DeviceBindingConfig config);
-
-  @async
-  String enrollDeviceBinding(DeviceBindingConfig config);
-
-  @async
-  String signDeviceBindingChallenge(DeviceBindingConfig config);
-
-  /// Raw JSON from the native SDK's own capabilities dictionary.
-  String getCapabilities();
 
   void cleanupAll();
 }

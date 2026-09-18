@@ -1,15 +1,10 @@
 import '../models.dart';
 
-/// Native entry point for both authentication factors.
+/// Native entry point for Silent Network Authentication (SNA).
 ///
-/// **SNA** — [initSNA] reads MCC/MNC; [startSNA] runs the cellular SNA request.
+/// [initSNA] reads MCC/MNC; [startSNA] runs the cellular SNA request.
 ///
-/// **Device binding** — [getDeviceBindingState], [enrollDeviceBinding] and
-/// [signDeviceBindingChallenge] manage a hardware-backed key pair. Unlike SNA
-/// these need no cellular connection, and [getDeviceBindingState] is callable
-/// straight after [setEnvironment] with no requestId.
-///
-/// `initAuth` and `startAuth` are the original SNA method names, kept permanently
+/// `initAuth` and `startAuth` are the original method names, kept permanently
 /// so apps built against earlier versions keep working.
 ///
 /// Every method returns the native Android/iOS SDK's own JSON response,
@@ -31,35 +26,6 @@ abstract class IFinvuNativeWrapper {
   /// Original name for [startSNA], kept for apps built against earlier versions.
   Future<Map<String, dynamic>> startAuth(String snaLink);
 
-  // ── Device binding factor ─────────────────────────────────────────────────
-
-  /// Reports whether this user has a usable device binding key.
-  ///
-  /// Purely local — no network, no cellular requirement, no user interaction — so
-  /// unlike the SNA methods this can be called immediately after
-  /// [setEnvironment]. Use it to decide whether to enroll or to sign.
-  Future<Map<String, dynamic>> getDeviceBindingState(DeviceBindingConfig cfg);
-
-  /// Creates a fresh hardware-backed key pair and returns the public key for the
-  /// server to store. Replaces any existing key, so this is also the recovery
-  /// path from an INVALIDATED state.
-  Future<Map<String, dynamic>> enrollDeviceBinding(
-    DeviceBindingEnrollConfig cfg,
-  );
-
-  /// Signs a server-issued challenge, prompting for biometric authentication first.
-  Future<Map<String, dynamic>> signDeviceBindingChallenge(
-    DeviceBindingSignConfig cfg,
-  );
-
-  /// Describes what this installed SDK build supports.
-  Future<Map<String, dynamic>> getCapabilities();
-
-  /// Ends the whole authentication session.
-  ///
-  /// Call this once when the user leaves the flow — **not** between factors. An
-  /// MFA flow runs SNA and device binding against one session. Enrolled device
-  /// binding keys are unaffected; they live in the platform keystore and survive
-  /// across sessions by design.
+  /// Ends the authentication session. Call this once when the user leaves the flow.
   Future<void> cleanupAll();
 }

@@ -1,6 +1,6 @@
 name: finvu_authentication_sdk
 description: "Silent Network Authentication for Finvu Account Aggregator flows. Verifies a mobile number over the carrier network, with no OTP, on Android and iOS."
-version: 1.0.1
+version: 1.0.2
 homepage: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 repository: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation
 issue_tracker: https://github.com/Cookiejar-technologies/finvu-auth-sdk-flutter-implementation/issues

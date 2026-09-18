@@ -31,28 +31,6 @@ class FinvuHostImpl implements IFinvuHost {
   Future<Map<String, dynamic>> startSNA(String snaLink) async =>
       _decode(await _api.startSNA(snaLink));
 
-  // ── Device binding factor ───────────────────────────────────────────────
-
-  @override
-  Future<Map<String, dynamic>> getDeviceBindingState(
-    pub.DeviceBindingConfig cfg,
-  ) async => _decode(await _api.getDeviceBindingState(toPigDeviceBinding(cfg)));
-
-  @override
-  Future<Map<String, dynamic>> enrollDeviceBinding(
-    pub.DeviceBindingEnrollConfig cfg,
-  ) async => _decode(await _api.enrollDeviceBinding(toPigDeviceBinding(cfg)));
-
-  @override
-  Future<Map<String, dynamic>> signDeviceBindingChallenge(
-    pub.DeviceBindingSignConfig cfg,
-  ) async =>
-      _decode(await _api.signDeviceBindingChallenge(toPigDeviceBinding(cfg)));
-
-  @override
-  Future<Map<String, dynamic>> getCapabilities() async =>
-      _decode(await _api.getCapabilities());
-
   @override
   Future<void> cleanupAll() => _api.cleanupAll();
 }

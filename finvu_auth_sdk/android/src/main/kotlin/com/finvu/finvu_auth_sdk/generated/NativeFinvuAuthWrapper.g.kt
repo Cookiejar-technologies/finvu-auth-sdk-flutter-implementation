@@ -119,61 +119,6 @@ data class InitConfig (
 
   override fun hashCode(): Int = toList().hashCode()
 }
-
-/**
- * Arguments for every device binding call. Device binding keys are scoped per
- * user, so [userId] is always required; the other fields are per-operation.
- *
- * Generated class from Pigeon that represents data sent in messages.
- */
-data class DeviceBindingConfig (
-  /** Required. Keys are scoped to this user. */
-  val userId: String? = null,
-  /** Optional; falls back to the entityId given to initSNA. */
-  val entityId: String? = null,
-  /** Required by signDeviceBindingChallenge. Signed as raw UTF-8 bytes. */
-  val challenge: String? = null,
-  /**
-   * Optional server nonce for enrollDeviceBinding. Android returns an attestation
-   * chain when supplied; iOS has no equivalent API and ignores it.
-   */
-  val attestationChallenge: String? = null,
-  val promptTitle: String? = null,
-  val promptSubtitle: String? = null
-)
- {
-  companion object {
-    fun fromList(pigeonVar_list: List<Any?>): DeviceBindingConfig {
-      val userId = pigeonVar_list[0] as String?
-      val entityId = pigeonVar_list[1] as String?
-      val challenge = pigeonVar_list[2] as String?
-      val attestationChallenge = pigeonVar_list[3] as String?
-      val promptTitle = pigeonVar_list[4] as String?
-      val promptSubtitle = pigeonVar_list[5] as String?
-      return DeviceBindingConfig(userId, entityId, challenge, attestationChallenge, promptTitle, promptSubtitle)
-    }
-  }
-  fun toList(): List<Any?> {
-    return listOf(
-      userId,
-      entityId,
-      challenge,
-      attestationChallenge,
-      promptTitle,
-      promptSubtitle,
-    )
-  }
-  override fun equals(other: Any?): Boolean {
-    if (other !is DeviceBindingConfig) {
-      return false
-    }
-    if (this === other) {
-      return true
-    }
-    return NativeFinvuAuthWrapperPigeonUtils.deepEquals(toList(), other.toList())  }
-
-  override fun hashCode(): Int = toList().hashCode()
-}
 private open class NativeFinvuAuthWrapperPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -187,11 +132,6 @@ private open class NativeFinvuAuthWrapperPigeonCodec : StandardMessageCodec() {
           InitConfig.fromList(it)
         }
       }
-      131.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          DeviceBindingConfig.fromList(it)
-        }
-      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -203,10 +143,6 @@ private open class NativeFinvuAuthWrapperPigeonCodec : StandardMessageCodec() {
       }
       is InitConfig -> {
         stream.write(130)
-        writeValue(stream, value.toList())
-      }
-      is DeviceBindingConfig -> {
-        stream.write(131)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -241,11 +177,6 @@ interface FinvuHostApi {
   fun setUp(env: Environment)
   fun initSNA(config: InitConfig, callback: (Result<String>) -> Unit)
   fun startSNA(snaLink: String, callback: (Result<String>) -> Unit)
-  fun getDeviceBindingState(config: DeviceBindingConfig, callback: (Result<String>) -> Unit)
-  fun enrollDeviceBinding(config: DeviceBindingConfig, callback: (Result<String>) -> Unit)
-  fun signDeviceBindingChallenge(config: DeviceBindingConfig, callback: (Result<String>) -> Unit)
-  /** Raw JSON from the native SDK's own capabilities dictionary. */
-  fun getCapabilities(): String
   fun cleanupAll()
 
   companion object {
@@ -310,81 +241,6 @@ interface FinvuHostApi {
                 reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapResult(data))
               }
             }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getDeviceBindingState$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val configArg = args[0] as DeviceBindingConfig
-            api.getDeviceBindingState(configArg) { result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.enrollDeviceBinding$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val configArg = args[0] as DeviceBindingConfig
-            api.enrollDeviceBinding(configArg) { result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.signDeviceBindingChallenge$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val configArg = args[0] as DeviceBindingConfig
-            api.signDeviceBindingChallenge(configArg) { result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(NativeFinvuAuthWrapperPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getCapabilities$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              listOf(api.getCapabilities())
-            } catch (exception: Throwable) {
-              NativeFinvuAuthWrapperPigeonUtils.wrapError(exception)
-            }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

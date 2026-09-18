@@ -113,7 +113,7 @@ class FinvuAuthSdkPlugin :
       "entityId" to (config.entityId ?: "")
     )
 
-    wrapper.initSNA(map) { nativeResult -> resolve(nativeResult, callback) }
+    wrapper.initAuth(map) { nativeResult -> resolve(nativeResult, callback) }
   }
 
   override fun startSNA(snaLink: String, callback: (Result<String>) -> Unit) {
@@ -126,42 +126,8 @@ class FinvuAuthSdkPlugin :
 
     wrapper.setup(this.env, act, sc)
 
-    wrapper.startSNA(snaLink) { nativeResult -> resolve(nativeResult, callback) }
+    wrapper.startAuth(snaLink) { nativeResult -> resolve(nativeResult, callback) }
   }
-
-  /* -------------------- Pigeon: device binding -------------------- */
-
-  override fun getDeviceBindingState(
-    config: DeviceBindingConfig,
-    callback: (Result<String>) -> Unit,
-  ) {
-    withWrapper(callback) {
-      wrapper.getDeviceBindingState(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
-    }
-  }
-
-  override fun enrollDeviceBinding(
-    config: DeviceBindingConfig,
-    callback: (Result<String>) -> Unit,
-  ) {
-    withWrapper(callback) {
-      wrapper.enrollDeviceBinding(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
-    }
-  }
-
-  override fun signDeviceBindingChallenge(
-    config: DeviceBindingConfig,
-    callback: (Result<String>) -> Unit,
-  ) {
-    withWrapper(callback) { act ->
-      // The biometric prompt must be raised from the main thread.
-      act.runOnUiThread {
-        wrapper.signDeviceBindingChallenge(config.toMap()) { nativeResult -> resolve(nativeResult, callback) }
-      }
-    }
-  }
-
-  override fun getCapabilities(): String = wrapper.getCapabilities().toString()
 
   override fun cleanupAll() {
     try {
@@ -192,37 +158,6 @@ class FinvuAuthSdkPlugin :
     result
       .onSuccess { json -> callback(Result.success(json?.toString() ?: "{}")) }
       .onFailure { err -> callback(Result.success(errorJsonStringFrom(err))) }
-  }
-
-  /**
-   * Ensures the wrapper is set up before a device binding call, reporting the
-   * failure through the callback rather than dropping it.
-   */
-  private fun withWrapper(
-    callback: (Result<String>) -> Unit,
-    block: (Activity) -> Unit,
-  ) {
-    val act = activity
-    val sc = scope
-    if (act == null || sc == null) {
-      callback(Result.success(errorJsonString(code = "ACTIVITY_OR_SCOPE_NOT_READY", message = "Activity/Scope not attached")))
-      return
-    }
-    wrapper.setup(this.env, act, sc)
-    block(act)
-  }
-
-  /** Only non-blank values are forwarded, so the native side applies its own defaults. */
-  private fun DeviceBindingConfig.toMap(): MutableMap<String, Any> {
-    val map = linkedMapOf<String, Any>()
-    userId?.takeIf { it.isNotBlank() }?.let { map["userId"] = it }
-    entityId?.takeIf { it.isNotBlank() }?.let { map["entityId"] = it }
-    challenge?.takeIf { it.isNotBlank() }?.let { map["challenge"] = it }
-    attestationChallenge?.takeIf { it.isNotBlank() }
-      ?.let { map["attestationChallenge"] = it }
-    promptTitle?.takeIf { it.isNotBlank() }?.let { map["promptTitle"] = it }
-    promptSubtitle?.takeIf { it.isNotBlank() }?.let { map["promptSubtitle"] = it }
-    return map
   }
 
   /**

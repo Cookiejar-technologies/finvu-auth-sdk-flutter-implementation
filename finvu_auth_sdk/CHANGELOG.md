@@ -1,3 +1,21 @@
+## 1.0.2
+
+**Breaking:** Removed `getDeviceBindingState`, `enrollDeviceBinding`,
+`signDeviceBindingChallenge` and `getCapabilities`, along with
+`DeviceBindingConfig`, `DeviceBindingEnrollConfig` and
+`DeviceBindingSignConfig`.
+
+* Why: the native SDK versions this plugin pins (Android
+  `finvuauthenticationsdk:1.0.3`, iOS `finvu-auth-sdk-ios` tag `v1.0.5`) only
+  ever exposed `initAuth`/`startAuth` — no device binding API exists on
+  either at those versions. The plugin's Kotlin/Swift code called
+  `initSNA`/`startSNA`/device-binding methods that don't exist on the pinned
+  dependency, which failed to compile in any consuming app. Fixed by having
+  the plugin call the native SDK's real `initAuth`/`startAuth` methods (the
+  Dart-facing `initSNA`/`startSNA`/`initAuth`/`startAuth` names are
+  unaffected) and removing the device-binding surface this SDK version
+  cannot actually deliver.
+
 ## 1.0.1
 
 **Breaking:** `initSNA`, `startSNA`, `getDeviceBindingState`, `enrollDeviceBinding`,
