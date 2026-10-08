@@ -38,10 +38,10 @@ class _NativeViewPageState extends State<NativeViewPage> {
     super.dispose();
   }
 
-  /// True unless the native SDK's own response carries the `error` key. The
+  /// True unless the native SDK's response has status FAILURE. The
   /// native SDK decides the field shape entirely; this page doesn't check for
-  /// any particular field beyond that shared error envelope.
-  bool _isSuccess(Map<String, dynamic> res) => res['error'] == null;
+  /// any particular field beyond that.
+  bool _isSuccess(Map<String, dynamic> res) => res['status'] != 'FAILURE';
 
   Future<void> _handleInitAuth() async {
     setState(() {

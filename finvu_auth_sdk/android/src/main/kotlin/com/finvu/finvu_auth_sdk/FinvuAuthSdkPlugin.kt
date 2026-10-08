@@ -26,11 +26,11 @@ import com.finvu.android.authenticationwrapper.utils.FinvuAuthEnvironment
  * [FinvuAuthenticationNativeWrapper] produced, as a string — no field
  * allow-list, no reshaping. This mirrors the React Native module
  * (`FinvuAuthSdkRnModule.kt`), which does the same
- * `result.getOrNull()?.toString()` passthrough on success. The only shape
- * this plugin imposes is the small `{"error": {...}}` envelope on failure —
- * copied from that same RN module, since a thrown exception has no JSON form
- * of its own and something has to serialize it. That keeps RN, Android and
- * iOS all failing the same way.
+ * `result.getOrNull()?.toString()` passthrough on success. On failure this
+ * plugin returns the same flat `{"status", "errorCode", "errorMessage"}`
+ * object the native SDK and the RN module use, since a thrown exception has
+ * no JSON form of its own and something has to serialize it. That keeps RN,
+ * Flutter, Android and iOS all failing the same way.
  */
 class FinvuAuthSdkPlugin :
   FlutterPlugin,
@@ -129,6 +129,39 @@ class FinvuAuthSdkPlugin :
     wrapper.startAuth(snaLink) { nativeResult -> resolve(nativeResult, callback) }
   }
 
+  /* -------------------- Device binding factor -------------------- */
+
+  /**
+   * Reports whether `keyId` from a previous enroll is still usable. Local only,
+   * so it may be called before [initSNA].
+   */
+  override fun getDeviceBindingState(configJson: String, callback: (Result<String>) -> Unit) {
+    withConfig(configJson, "DEVICE_BINDING_STATE_ERROR", callback) { map ->
+      wrapper.getDeviceBindingState(map) { nativeResult -> resolve(nativeResult, callback) }
+    }
+  }
+
+  /**
+   * Prompts for the device lock, then creates a fresh key pair and returns its
+   * keyId and public key. Pigeon delivers host calls on the main thread, which
+   * is where the native SDK must show its BiometricPrompt.
+   */
+  override fun enrollDeviceBinding(configJson: String, callback: (Result<String>) -> Unit) {
+    withConfig(configJson, "DEVICE_BINDING_ENROLL_ERROR", callback) { map ->
+      wrapper.enrollDeviceBinding(map) { nativeResult -> resolve(nativeResult, callback) }
+    }
+  }
+
+  /** Signs a server-issued challenge after a device-lock prompt. */
+  override fun signDeviceBindingChallenge(configJson: String, callback: (Result<String>) -> Unit) {
+    withConfig(configJson, "DEVICE_BINDING_SIGN_ERROR", callback) { map ->
+      wrapper.signDeviceBindingChallenge(map) { nativeResult -> resolve(nativeResult, callback) }
+    }
+  }
+
+  /** Describes what this native SDK build supports. */
+  override fun getCapabilities(): String = wrapper.getCapabilities().toString()
+
   override fun cleanupAll() {
     try {
       wrapper.onDestroy()
@@ -151,8 +184,36 @@ class FinvuAuthSdkPlugin :
   }
 
   /**
+   * Parses the call's JSON config into the map the native SDK expects, after
+   * making sure the wrapper has the current activity. A bad config or a
+   * missing activity is reported to Dart as a failure, never thrown.
+   */
+  private fun withConfig(
+    configJson: String,
+    errorCode: String,
+    callback: (Result<String>) -> Unit,
+    block: (MutableMap<String, Any>) -> Unit,
+  ) {
+    val act = activity
+    val sc = scope
+    if (act == null || sc == null) {
+      callback(Result.success(errorJsonString(code = "ACTIVITY_OR_SCOPE_NOT_READY", message = "Activity/Scope not attached")))
+      return
+    }
+    val map = try {
+      val json = JSONObject(configJson)
+      json.keys().asSequence().associateWith { key -> json.get(key) }.toMutableMap()
+    } catch (e: Exception) {
+      callback(Result.success(errorJsonString(code = errorCode, message = e.message ?: "Invalid config JSON")))
+      return
+    }
+    wrapper.setup(this.env, act, sc)
+    block(map)
+  }
+
+  /**
    * Turns a native `Result<JSONObject>` into the string the Dart side gets:
-   * the JSON verbatim on success, the shared error envelope on failure.
+   * the JSON verbatim on success, the flat error object on failure.
    */
   private fun resolve(result: Result<JSONObject>, callback: (Result<String>) -> Unit) {
     result
@@ -161,16 +222,14 @@ class FinvuAuthSdkPlugin :
   }
 
   /**
-   * Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly, so RN, Android and
-   * iOS all report failures in the same shape.
+   * Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly: the same flat
+   * `{status, errorCode, errorMessage}` shape the native SDK returns.
    */
   private fun errorJsonString(status: String = "FAILURE", code: String, message: String): String {
     return JSONObject().apply {
-      put("error", JSONObject().apply {
-        put("status", status)
-        put("errorCode", code)
-        put("errorMessage", message)
-      })
+      put("status", status)
+      put("errorCode", code)
+      put("errorMessage", message)
     }.toString()
   }
 

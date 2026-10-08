@@ -68,5 +68,7 @@
 			<string>TLSv1.1</string>
 		</dict>
 	</dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Confirms it is you before signing in with this device.</string>
 </dict>
 </plist>

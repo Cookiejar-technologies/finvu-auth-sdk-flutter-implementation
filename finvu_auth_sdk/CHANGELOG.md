@@ -1,3 +1,23 @@
+## 1.0.3
+
+Device binding is back, now on native SDKs that actually provide it.
+
+* Added `getDeviceBindingState`, `enrollDeviceBinding`,
+  `signDeviceBindingChallenge` and `getCapabilities` to the native wrapper and
+  the WebView bridge. Each config is a plain `Map<String, dynamic>` (or, from a
+  web page, an object or JSON string) handed to the native SDK unchanged, and
+  each response is the native SDK's own JSON, the same as the React Native SDK.
+* Native SDKs updated: Android `finvuauthenticationsdk` 1.0.3 → 1.1.4, iOS
+  `finvu-auth-sdk-ios` v1.0.5 → v1.1.3. Both add device binding and
+  certificate pinning on auth event logging.
+* **Breaking:** failures now come back in the native SDKs' flat shape,
+  `{"status": "FAILURE", "errorCode", "errorMessage"}`, instead of
+  `{"error": {...}}`. Check `result['status'] == 'FAILURE'` rather than
+  `result['error']`. This matches React Native SDK 1.0.3.
+* Android apps using device binding must use `FlutterFragmentActivity` as
+  their `MainActivity`; iOS apps need `NSFaceIDUsageDescription` in
+  `Info.plist`.
+
 ## 1.0.2
 
 **Breaking:** Removed `getDeviceBindingState`, `enrollDeviceBinding`,

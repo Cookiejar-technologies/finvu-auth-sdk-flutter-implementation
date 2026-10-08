@@ -62,9 +62,9 @@ android {
 
 dependencies {
     // Finvu Android Auth SDK — resolved from Maven Central (mavenCentral() above).
-    // No GitHub Packages credentials required. Pinned to 1.0.3 deliberately —
-    // this no longer tracks the React Native wrapper's version.
-    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.0.3")
+    // No GitHub Packages credentials required. 1.1.4 is the first release with
+    // device binding, logging certificate pinning and the trimmed POM.
+    implementation("io.github.cookiejar-technologies:finvuauthenticationsdk:1.1.4")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
 }

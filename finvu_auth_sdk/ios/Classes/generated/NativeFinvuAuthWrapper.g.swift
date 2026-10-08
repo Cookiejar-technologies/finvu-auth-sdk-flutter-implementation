@@ -222,16 +222,21 @@ class NativeFinvuAuthWrapperPigeonCodec: FlutterStandardMessageCodec, @unchecked
 ///
 /// The one shape this bridge imposes is on failure: native calls throw an
 /// exception rather than returning JSON, so something has to serialize it.
-/// Both platform plugins wrap that into the same small
-/// `{"error": {"status", "errorCode", "errorMessage"}}` envelope the RN
-/// module uses, so failures look identical across RN, Android-native, and
-/// iOS-native callers.
+/// Both platform plugins turn that into the same flat
+/// `{"status": "FAILURE", "errorCode", "errorMessage"}` object the native
+/// SDKs and the React Native module use, so failures look identical across
+/// RN, Flutter, Android-native and iOS-native callers.
 ///
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol FinvuHostApi {
   func setUp(env: Environment) throws
   func initSNA(config: InitConfig, completion: @escaping (Result<String, Error>) -> Void)
   func startSNA(snaLink: String, completion: @escaping (Result<String, Error>) -> Void)
+  func getDeviceBindingState(configJson: String, completion: @escaping (Result<String, Error>) -> Void)
+  func enrollDeviceBinding(configJson: String, completion: @escaping (Result<String, Error>) -> Void)
+  func signDeviceBindingChallenge(configJson: String, completion: @escaping (Result<String, Error>) -> Void)
+  /// The native SDK's own capabilities JSON.
+  func getCapabilities() throws -> String
   func cleanupAll() throws
 }
 
@@ -289,6 +294,71 @@ class FinvuHostApiSetup {
       }
     } else {
       startSNAChannel.setMessageHandler(nil)
+    }
+    let getDeviceBindingStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getDeviceBindingState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getDeviceBindingStateChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let configJsonArg = args[0] as! String
+        api.getDeviceBindingState(configJson: configJsonArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getDeviceBindingStateChannel.setMessageHandler(nil)
+    }
+    let enrollDeviceBindingChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.enrollDeviceBinding\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      enrollDeviceBindingChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let configJsonArg = args[0] as! String
+        api.enrollDeviceBinding(configJson: configJsonArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      enrollDeviceBindingChannel.setMessageHandler(nil)
+    }
+    let signDeviceBindingChallengeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.signDeviceBindingChallenge\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      signDeviceBindingChallengeChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let configJsonArg = args[0] as! String
+        api.signDeviceBindingChallenge(configJson: configJsonArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      signDeviceBindingChallengeChannel.setMessageHandler(nil)
+    }
+    /// The native SDK's own capabilities JSON.
+    let getCapabilitiesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.getCapabilities\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getCapabilitiesChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.getCapabilities()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      getCapabilitiesChannel.setMessageHandler(nil)
     }
     let cleanupAllChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.finvu_authentication_sdk.FinvuHostApi.cleanupAll\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

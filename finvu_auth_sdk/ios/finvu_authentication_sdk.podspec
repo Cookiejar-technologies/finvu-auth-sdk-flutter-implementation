@@ -18,12 +18,11 @@ Authentication (SNA) and WebView bridge support for iOS and Android.
   s.dependency 'Flutter'
   s.platform = :ios, '16.0'
 
-  # Download FinvuAuthenticationSDK from public GitHub repo
-  # Pinned to v1.0.5 deliberately — this no longer tracks the React Native
-  # wrapper's version. On version bump: update v1.0.5 and 1.0.5 below to match
-  # the new tag.
+  # Download FinvuAuthenticationSDK from public GitHub repo.
+  # v1.1.3 is the first release with device binding and logging certificate
+  # pinning. On version bump: update v1.1.3 and 1.1.3 below to match the new tag.
   s.prepare_command = <<-CMD
-    curl -sSL https://github.com/Cookiejar-technologies/finvu-auth-sdk-ios/archive/refs/tags/v1.0.5.tar.gz | tar -xz --strip-components=1 finvu-auth-sdk-ios-1.0.5/FinvuAuthenticationSDK.xcframework
+    curl -sSL https://github.com/Cookiejar-technologies/finvu-auth-sdk-ios/archive/refs/tags/v1.1.3.tar.gz | tar -xz --strip-components=1 finvu-auth-sdk-ios-1.1.3/FinvuAuthenticationSDK.xcframework
   CMD
 
   s.vendored_frameworks = 'FinvuAuthenticationSDK.xcframework'

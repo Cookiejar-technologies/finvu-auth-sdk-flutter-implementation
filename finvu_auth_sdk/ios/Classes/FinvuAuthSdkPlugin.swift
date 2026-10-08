@@ -14,11 +14,11 @@ public class FinvuAuthSdkPlugin: NSObject, FlutterPlugin {
 // FinvuAuthenticationSDK produced, serialized as a string — no field
 // allow-list, no reshaping. This mirrors the React Native module
 // (`FinvuAuthSdkRnModule.swift`), which does the same JSONSerialization
-// passthrough on success. The only shape this plugin imposes is the small
-// `{"error": {...}}` envelope on failure — copied from that same RN module,
-// since a thrown FinvuAuthException has no JSON form of its own and
-// something has to serialize it. That keeps RN, Android and iOS all failing
-// the same way.
+// passthrough on success. On failure it returns the same flat
+// `{"status", "errorCode", "errorMessage"}` object the native SDK and the RN
+// module use, since a thrown FinvuAuthException has no JSON form of its own
+// and something has to serialize it. That keeps RN, Flutter, Android and iOS
+// all failing the same way.
 
 final class FinvuHostApiImpl: FinvuHostApi {
 
@@ -68,6 +68,43 @@ final class FinvuHostApiImpl: FinvuHostApi {
     }
   }
 
+  // MARK: - Device binding factor
+
+  /// Reports whether `keyId` from a previous enroll is still usable. Local only,
+  /// so it may be called before `initSNA`.
+  func getDeviceBindingState(configJson: String, completion: @escaping (Result<String, Error>) -> Void) {
+    guard let config = Self.parseConfig(configJson, errorCode: "DEVICE_BINDING_STATE_ERROR", completion: completion) else { return }
+    FinvuAuthenticationNativeWrapper.shared.getDeviceBindingState(config: config) { result in
+      completion(.success(Self.jsonString(from: result)))
+    }
+  }
+
+  /// Prompts for the device lock, then creates a fresh key pair and returns its
+  /// keyId and public key. The prompt must be raised from the main thread.
+  func enrollDeviceBinding(configJson: String, completion: @escaping (Result<String, Error>) -> Void) {
+    guard let config = Self.parseConfig(configJson, errorCode: "DEVICE_BINDING_ENROLL_ERROR", completion: completion) else { return }
+    DispatchQueue.main.async {
+      FinvuAuthenticationNativeWrapper.shared.enrollDeviceBinding(config: config) { result in
+        completion(.success(Self.jsonString(from: result)))
+      }
+    }
+  }
+
+  /// Signs a server-issued challenge after a device-lock prompt.
+  func signDeviceBindingChallenge(configJson: String, completion: @escaping (Result<String, Error>) -> Void) {
+    guard let config = Self.parseConfig(configJson, errorCode: "DEVICE_BINDING_SIGN_ERROR", completion: completion) else { return }
+    DispatchQueue.main.async {
+      FinvuAuthenticationNativeWrapper.shared.signDeviceBindingChallenge(config: config) { result in
+        completion(.success(Self.jsonString(from: result)))
+      }
+    }
+  }
+
+  /// Describes what this native SDK build supports.
+  func getCapabilities() throws -> String {
+    return Self.jsonString(fromDict: FinvuAuthenticationNativeWrapper.shared.getCapabilities())
+  }
+
   func cleanupAll() throws {
     DispatchQueue.main.async {
       FinvuAuthenticationNativeWrapper.shared.cleanupAll()
@@ -76,8 +113,20 @@ final class FinvuHostApiImpl: FinvuHostApi {
 
   // MARK: - Helpers
 
+  /// Parses the call's JSON config, reporting a bad config to Dart as a failure.
+  private static func parseConfig(_ configJson: String,
+                                  errorCode: String,
+                                  completion: @escaping (Result<String, Error>) -> Void) -> [String: Any]? {
+    guard let data = configJson.data(using: .utf8),
+          let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      completion(.success(errorJsonString(code: errorCode, message: "Invalid config JSON")))
+      return nil
+    }
+    return config
+  }
+
   /// Serializes a native result to the string the Dart side gets: the native
-  /// dictionary verbatim on success, or the shared error envelope on failure
+  /// dictionary verbatim on success, or the flat error object on failure
   /// (a thrown FinvuAuthException has no JSON form of its own).
   private static func jsonString(from result: Result<[String: Any], FinvuAuthException>) -> String {
     switch result {
@@ -96,15 +145,13 @@ final class FinvuHostApiImpl: FinvuHostApi {
     return jsonString
   }
 
-  /// Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly, so RN, Android and
-  /// iOS all report failures in the same shape.
+  /// Mirrors `FinvuAuthSdkRnModule.errorJsonString` exactly: the same flat
+  /// `{status, errorCode, errorMessage}` shape the native SDK returns.
   private static func errorJsonString(status: String = "FAILURE", code: String, message: String) -> String {
     return jsonString(fromDict: [
-      "error": [
-        "status": status,
-        "errorCode": code,
-        "errorMessage": message,
-      ]
+      "status": status,
+      "errorCode": code,
+      "errorMessage": message,
     ])
   }
 }

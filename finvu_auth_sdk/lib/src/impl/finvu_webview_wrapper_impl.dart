@@ -58,13 +58,30 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
             case 'startAuth':
             case 'startSNA':
               return _host.startSNA('${payload['snaLink'] ?? ''}');
+            // Device binding: the page's config goes to the native SDK as-is,
+            // like RN's asJsonString (a string stays a string, an object is
+            // JSON-encoded).
+            case 'getDeviceBindingState':
+              return _host.getDeviceBindingState(
+                _asJsonString(payload['config']),
+              );
+            case 'enrollDeviceBinding':
+              return _host.enrollDeviceBinding(
+                _asJsonString(payload['config']),
+              );
+            case 'signDeviceBindingChallenge':
+              return _host.signDeviceBindingChallenge(
+                _asJsonString(payload['config']),
+              );
+            case 'getCapabilities':
+              return _host.getCapabilities();
             default:
+              // Answer rather than drop, so the page's promise settles. Same
+              // flat shape as the native SDKs and the RN bridge.
               return {
-                'error': {
-                  'status': 'FAILURE',
-                  'errorCode': 'UNSUPPORTED_METHOD',
-                  'errorMessage': 'Unsupported method: $method',
-                },
+                'status': 'FAILURE',
+                'errorCode': 'UNSUPPORTED_METHOD',
+                'errorMessage': 'Unsupported method: $method',
               };
           }
         }
@@ -94,4 +111,9 @@ class FinvuWebViewWrapperImpl implements IFinvuWebViewWrapper {
 
   @override
   Future<void> cleanupAll() => _host.cleanupAll();
+
+  /// Mirrors RN's `asJsonString`: a string is forwarded unchanged, anything
+  /// else is JSON-encoded.
+  static String _asJsonString(Object? config) =>
+      config is String ? config : jsonEncode(config);
 }
